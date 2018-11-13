@@ -173,7 +173,7 @@ app.get('/api/onedriveitems', handler(async (req, res) => {
 })); 
 
 app.get('/wabaki', handler(async (req, res) => {
-    return "asd";
+    return res.json({a:1});
 }));
 
 

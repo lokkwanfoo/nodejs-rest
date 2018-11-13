@@ -76,7 +76,7 @@ Office.initialize = function (reason) {
         })
         .fail(function (result) {
             handleServerSideErrors(result);
-          console.log(result.responseJSON.error);
+            console.log(result.responseJSON.error);
         });
     }
 
@@ -235,4 +235,8 @@ Office.initialize = function (reason) {
         else {
             logError(result);
         }
+    }
+
+    function logError(result) {
+        console.log(result);
     }
