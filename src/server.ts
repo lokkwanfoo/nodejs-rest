@@ -141,4 +141,40 @@ app.get('/index.html', handler(async (req, res) => {
     return res.sendfile('index.html');
 }));
 
+app.get('/api/onedriveitems', handler(async (req, res) => {
+    // TODO7: Initialize the AuthModule object and validate the access token 
+    //        that the client-side received from the Office host.
+
+    await auth.initialize();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+
+    // TODO8: Get a token to Microsoft Graph from either persistent storage 
+    //        or the "on behalf of" flow.
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.Read.All']);
+
+    // TODO9: Use the token to get data from Microsoft Graph.
+    const graphData = await MSGraphHelper.getGraphData(graphToken, "/me/drive/root/children", "?$select=name&$top=3");
+
+    // TODO10: Relay any errors from Microsoft Graph to the client.
+
+    if (graphData.code) {
+        if (graphData.code === 401) {
+            throw new UnauthorizedError('Microsoft Graph error', graphData);
+        }
+    }
+    // TODO11: Send to the client only the data that it actually needs.
+    const itemNames: string[] = [];
+    const oneDriveItems: string[] = graphData['value'];
+    for (let item of oneDriveItems){
+        itemNames.push(item['name']);
+    }
+    return res.json(itemNames);
+    
+})); 
+
+app.get('/wabaki', handler(async (req, res) => {
+    return "asd";
+}));
+
+
 
