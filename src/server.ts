@@ -141,6 +141,33 @@ app.get('/index.html', handler(async (req, res) => {
     return res.sendfile('index.html');
 }));
 
+app.get('/api/me', handler(async (req, res) => {
+    // TODO7: Initialize the AuthModule object and validate the access token 
+    //        that the client-side received from the Office host.
+
+    await auth.initialize();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+
+    // TODO8: Get a token to Microsoft Graph from either persistent storage 
+    //        or the "on behalf of" flow.
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.Read.All']);
+
+    // TODO9: Use the token to get data from Microsoft Graph.
+    const graphData = await MSGraphHelper.getGraphData(graphToken, "/me", "?");
+
+    // TODO10: Relay any errors from Microsoft Graph to the client.
+
+    if (graphData.code) {
+        if (graphData.code === 401) {
+            throw new UnauthorizedError('Microsoft Graph error', graphData);
+        }
+    }
+    
+    // TODO11: Send to the client only the data that it actually needs.
+    return res.json(graphData);
+    
+})); 
+
 app.get('/api/onedriveitems', handler(async (req, res) => {
     // TODO7: Initialize the AuthModule object and validate the access token 
     //        that the client-side received from the Office host.
@@ -170,10 +197,47 @@ app.get('/api/onedriveitems', handler(async (req, res) => {
     }
     return res.json(itemNames);
     
+}));
+
+async function encodeBase64(file) {
+    return fs.readFileSync(file, 'base64');
+}
+
+app.get('/api/template', handler(async (req, res) => {
+
+    var file = encodeBase64('./robots.txt');
+    file.then(function() {
+        console.log("Promise resolved");
+    }).catch(function() {
+        console.log("Promise rejected")
+    })
+
+    return res.send(file);
+
+
+    // TODO11: Send to the client only the data that it actually needs.
+    
+    
 })); 
 
-app.get('/wabaki', handler(async (req, res) => {
-    return res.json({a:1});
+
+
+app.get('/api/templatee', handler(async (req, res) => {
+
+
+    // TODO11: Send to the client only the data that it actually needs.
+    return res.send('asd');
+    
+})); 
+
+app.get('/wabak', handler(async (req, res) => {
+    await auth.initialize();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+
+    // TODO8: Get a token to Microsoft Graph from either persistent storage 
+    //        or the "on behalf of" flow.
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.Read.All']);
+    return res.send(graphToken);
 }));
 
 

@@ -4,14 +4,15 @@
     This file provides functions to get ask the Office host to get an access token to the add-in
 	and to pass that token to the server to get Microsoft Graph data.
 */
+
 Office.initialize = function (reason) {
     // Checks for the DOM to load using the jQuery ready function.
     $(document).ready(function () {
     // After the DOM is loaded, app-specific code can run.
     // Add any initialization logic to this function.
-	 $("#getGraphAccessTokenButton").click(function () {
-            getOneDriveFiles();
-            });
+        $("#getGraphAccessTokenButton").click(function () {
+                getOneDriveFiles();
+        });
     });
 }
 
@@ -32,7 +33,7 @@ Office.initialize = function (reason) {
             function (result) {
                 if (result.status === "succeeded") {
                     accessToken = result.value;
-                    getData("/api/values", accessToken);
+                    getData("/api/me", accessToken, "/displayName");
                 }
                 else {
                     handleClientSideErrors(result);
@@ -46,11 +47,12 @@ Office.initialize = function (reason) {
 
     // Calls the specified URL or route (in the same domain as the add-in)
     // and includes the specified access token.
-    function getData(relativeUrl, accessToken) {
+    function getData(relativeUrl, accessToken, path) {
 
         $.ajax({
             url: relativeUrl,
-            headers: { "Authorization": "Bearer " + accessToken },
+            headers: { "Authorization": "Bearer " + accessToken},
+            path: path,
             type: "GET",
             // Turn off caching when debugging to force a fetch of data
             // with each call.
@@ -67,6 +69,7 @@ Office.initialize = function (reason) {
 
             // If the result contains 'capolids', then it is the Claims string,
             // not the data.
+            console.log(result)
             if (result[0].indexOf('capolids') !== -1) {
                 result[0] = JSON.parse(result[0])
                 getDataUsingAuthChallenge(result[0]);
