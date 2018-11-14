@@ -22,7 +22,7 @@ const env = process.env.NODE_ENV || 'development';
 const auth = new AuthModule(
     /* These values are required for our application to exchange the token and get access to the resource data */
     /* client_id */ 'f998a180-c0a8-485c-a255-79f92eca235b',
-    /* client_secret */ encodeURI('rFVY6:luitzeJYKW7689!%$'),
+    /* client_secret */ 'rFVY6:luitzeJYKW7689!%$',
 
     /* This information tells our server where to download the signing keys to validate the JWT that we received,
      * and where to get tokens. This is not configured for multi tenant; i.e., it is assumed that the source of the JWT and our application live
