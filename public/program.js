@@ -33,7 +33,7 @@ Office.initialize = function (reason) {
             function (result) {
                 if (result.status === "succeeded") {
                     accessToken = result.value;
-                    getData("/api/me", accessToken, "/displayName");
+                    getData("/api/template", accessToken, "/displayName");
                 }
                 else {
                     handleClientSideErrors(result);
@@ -51,8 +51,7 @@ Office.initialize = function (reason) {
 
         $.ajax({
             url: relativeUrl,
-            headers: { "Authorization": "Bearer " + accessToken},
-            path: path,
+            headers: { "Authorization": "Bearer " + accessToken, "Path": path},
             type: "GET",
             // Turn off caching when debugging to force a fetch of data
             // with each call.
@@ -69,7 +68,6 @@ Office.initialize = function (reason) {
 
             // If the result contains 'capolids', then it is the Claims string,
             // not the data.
-            console.log(result)
             if (result[0].indexOf('capolids') !== -1) {
                 result[0] = JSON.parse(result[0])
                 getDataUsingAuthChallenge(result[0]);

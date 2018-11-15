@@ -199,25 +199,51 @@ app.get('/api/onedriveitems', handler(async (req, res) => {
     
 }));
 
-async function encodeBase64(file) {
-    return fs.readFileSync(file, 'base64');
+async function encodeBase64(path) {
+    var dir = __dirname + path.toString();
+    let buff = fs.readFileSync(dir);
+    let base64data = buff.toString('base64');
+    return base64data;
+}
+
+function findObjectByKey(array, key, value) {
+    for (var i = 0; i < array.length; i++) {
+        if (array[i][key] === value) {
+            return array[i];
+        }
+    }
+    return null;
 }
 
 app.get('/api/template', handler(async (req, res) => {
+ 
+    // console.log(req.headers.path)
+    // var template = fs.createWriteStream("");
 
-    var file = encodeBase64('./robots.txt');
-    file.then(function() {
-        console.log("Promise resolved");
-    }).catch(function() {
-        console.log("Promise rejected")
+    await auth.initialize();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+
+    // TODO8: Get a token to Microsoft Graph from either persistent storage 
+    //        or the "on behalf of" flow.
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.Read.All']);
+
+    // TODO9: Use the token to get data from Microsoft Graph.
+    const graphData = await MSGraphHelper.getGraphData(graphToken, "/sites/dotoffice.sharepoint.com,9c91032b-c1a3-4860-8ef5-17786c44026a,48a63543-0287-40c1-b055-02ea71acd0bd/Drives/b!KwORnKPBYEiO9Rd4bEQCakM1pkiHAsFAsFUC6nGs0L3YYeV6eqLMTZgSaw0O_Ylx/root/children", 
+    "");
+    
+        const oneDriveItems: string[] = graphData['value'];
+
+        var obj = findObjectByKey(oneDriveItems, '@microsoft.graph.downloadUrl', 3);
+
+    // console.log(oneDriveItems.'@microsoft.graph.downloadUrl');
+    
+    const file = encodeBase64('/robots.txt');
+    file.then(function(result) {
+        return res.send('');  
+    }).catch(function(error) {
+        console.log(error)
     })
 
-    return res.send(file);
-
-
-    // TODO11: Send to the client only the data that it actually needs.
-    
-    
 })); 
 
 
