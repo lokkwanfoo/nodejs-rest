@@ -33,14 +33,15 @@ Office.initialize = function (reason) {
             function (result) {
                 if (result.status === "succeeded") {
                     accessToken = result.value;
-                    getData("/api/template", accessToken, "/displayName");
+                    getData("/api/template", accessToken, "template");
                 }
                 else {
+                    console.log(result)
                     handleClientSideErrors(result);
                     console.log("Code: " + result.error.code);
                     console.log("Message: " + result.error.message);
                     console.log("name: " + result.error.name);
-                    document.getElementById("getGraphAccessTokenButton").disabled = true;
+                    // document.getElementById("getGraphAccessTokenButton").disabled = true;
                 }
             });
     }
@@ -58,6 +59,7 @@ Office.initialize = function (reason) {
             cache: false
         })
         .done(function (result) {
+            console.log(result)
             /*
               If the Microsoft Graph target requests addtional authentication
               factor(s), the result will not be data. It will be a Claims

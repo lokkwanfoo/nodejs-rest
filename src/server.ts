@@ -15,14 +15,16 @@ import { AuthModule } from './auth';
 import { MSGraphHelper} from './msgraph-helper';
 import { UnauthorizedError } from './errors';
 
+require('dotenv').config()
+
 /* Set the environment to development if not set */
 const env = process.env.NODE_ENV || 'development';
 
 /* Instantiate AuthModule to assist with JWT parsing and verification, and token acquisition. */
 const auth = new AuthModule(
     /* These values are required for our application to exchange the token and get access to the resource data */
-    /* client_id */ 'f998a180-c0a8-485c-a255-79f92eca235b',
-    /* client_secret */ 'rFVY6:luitzeJYKW7689!%$',
+    /* client_id */ process.env.client_id,
+    /* client_secret */ process.env.client_secret,
 
     /* This information tells our server where to download the signing keys to validate the JWT that we received,
      * and where to get tokens. This is not configured for multi tenant; i.e., it is assumed that the source of the JWT and our application live
@@ -35,9 +37,9 @@ const auth = new AuthModule(
 
     /* Token is validated against the following values: */
     // Audience is the same as the client ID because, relative to the Office host, the add-in is the "resource".
-    /* audience */ 'f998a180-c0a8-485c-a255-79f92eca235b', 
+    /* audience */ process.env.client_id, 
     /* scopes */ ['access_as_user'],
-    /* issuer */ 'https://login.microsoftonline.com/5fef6f29-f388-438c-a7ca-5eca0221422e/v2.0',
+    /* issuer */ 'https://login.microsoftonline.com/' + process.env.tenant_id + '/v2.0',
 );
 
 /* A promisified express handler to catch errors easily */
@@ -200,53 +202,50 @@ app.get('/api/onedriveitems', handler(async (req, res) => {
 }));
 
 async function encodeBase64(path) {
-    var dir = __dirname + path.toString();
-    let buff = fs.readFileSync(dir);
+    console.log(path)
+    let buff = fs.readFileSync(path);
+    console.log()
     let base64data = buff.toString('base64');
+    console.log(base64data)
     return base64data;
 }
 
-function findObjectByKey(array, key, value) {
-    for (var i = 0; i < array.length; i++) {
-        if (array[i][key] === value) {
-            return array[i];
-        }
-    }
-    return null;
-}
-
 app.get('/api/template', handler(async (req, res) => {
- 
-    // console.log(req.headers.path)
-    // var template = fs.createWriteStream("");
-
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-
-    // TODO8: Get a token to Microsoft Graph from either persistent storage 
-    //        or the "on behalf of" flow.
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.Read.All']);
 
-    // TODO9: Use the token to get data from Microsoft Graph.
-    const graphData = await MSGraphHelper.getGraphData(graphToken, "/sites/dotoffice.sharepoint.com,9c91032b-c1a3-4860-8ef5-17786c44026a,48a63543-0287-40c1-b055-02ea71acd0bd/Drives/b!KwORnKPBYEiO9Rd4bEQCakM1pkiHAsFAsFUC6nGs0L3YYeV6eqLMTZgSaw0O_Ylx/root/children", 
-    "");
-    
-        const oneDriveItems: string[] = graphData['value'];
+    var t = fs.createWriteStream(__dirname + "/temp/" + req.headers.path + ".docx");
 
-        var obj = findObjectByKey(oneDriveItems, '@microsoft.graph.downloadUrl', 3);
+    await MSGraphHelper.getGraphData(graphToken, process.env.sharepoint_templates + req.headers.path + ".docx", 
+    "").then(function(result) {
+        https.get(result['@microsoft.graph.downloadUrl'], function(response) {
+            response.pipe(t);
 
-    // console.log(oneDriveItems.'@microsoft.graph.downloadUrl');
-    
-    const file = encodeBase64('/robots.txt');
-    file.then(function(result) {
-        return res.send('');  
+            // let encoded = new Buffer("/temp/" + req.headers.path + ".docx");
+            // let asd = encoded.toString('base64');
+            // console.log(asd);
+            // return res.send(encoded);
+            const file = encodeBase64(__dirname + "/temp/" + req.headers.path + ".docx");
+            // const file = encodeBase64(__dirname + "/temp/robots.txt");
+
+            file.then(function(result) {
+                console.log(result)
+                // fs.unlink(__dirname + "/temp/" + req.headers.path + ".docx");
+
+                return res.send(result);  
+            }).catch(function(error) {
+                console.log(error)
+            })
+
+        })
     }).catch(function(error) {
-        console.log(error)
-    })
+        console.log(error);
+    });
+        
+    
 
 })); 
-
-
 
 app.get('/api/templatee', handler(async (req, res) => {
 
@@ -256,14 +255,11 @@ app.get('/api/templatee', handler(async (req, res) => {
     
 })); 
 
-app.get('/wabak', handler(async (req, res) => {
-    await auth.initialize();
-    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+app.get('/api/wabak', handler(async (req, res) => {
 
-    // TODO8: Get a token to Microsoft Graph from either persistent storage 
-    //        or the "on behalf of" flow.
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.Read.All']);
-    return res.send(graphToken);
+    console.log(process.env.client_secret);
+
+    return res.send('');
 }));
 
 
