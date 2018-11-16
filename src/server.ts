@@ -222,12 +222,7 @@ app.get('/api/template', handler(async (req, res) => {
         https.get(result['@microsoft.graph.downloadUrl'], function(response) {
             response.pipe(t);
 
-            // let encoded = new Buffer("/temp/" + req.headers.path + ".docx");
-            // let asd = encoded.toString('base64');
-            // console.log(asd);
-            // return res.send(encoded);
             const file = encodeBase64(__dirname + "/temp/" + req.headers.path + ".docx");
-            // const file = encodeBase64(__dirname + "/temp/robots.txt");
 
             file.then(function(result) {
                 console.log(result)
