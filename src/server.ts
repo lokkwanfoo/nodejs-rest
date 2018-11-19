@@ -201,38 +201,40 @@ app.get('/api/onedriveitems', handler(async (req, res) => {
     
 }));
 
-async function encodeBase64(path) {
-    console.log(path)
-    let buff = fs.readFileSync(path);
-    console.log()
-    let base64data = buff.toString('base64');
-    console.log(base64data)
-    return base64data;
-}
-
 app.get('/api/template', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.Read.All']);
 
-    var t = fs.createWriteStream(__dirname + "/temp/" + req.headers.path + ".docx");
+    
 
     await MSGraphHelper.getGraphData(graphToken, process.env.sharepoint_templates + req.headers.path + ".docx", 
     "").then(function(result) {
-        https.get(result['@microsoft.graph.downloadUrl'], function(response) {
-            response.pipe(t);
 
-            const file = encodeBase64(__dirname + "/temp/" + req.headers.path + ".docx");
-
-            file.then(function(result) {
-                console.log(result)
-                // fs.unlink(__dirname + "/temp/" + req.headers.path + ".docx");
-
-                return res.send(result);  
-            }).catch(function(error) {
-                console.log(error)
+        // https.get(result['@microsoft.graph.downloadUrl'], (resp) => {
+        //     resp.setEncoding('base64');
+        //     var body = "data:" + resp.headers["content-type"] + ";base64,";
+        //     resp.on('data', (data) => { 
+        //         console.log(data);
+        //         return res.send(data); 
+        //     });
+        //     resp.on('end', () => {
+        //         console.log(body);
+        //         //return res.json({result: body, status: 'success'});
+        //     });
+        // }).on('error', (e) => {
+        //     console.log(`Got error: ${e.message}`);
+        // });
+ 
+        https.get(result['@microsoft.graph.downloadUrl'], (response) => {
+            response.setEncoding('base64');
+            var base64;
+            response.on('data', (data) => {
+                base64 = data;
             })
-
+            response.on('end', () => {
+                return res.send(base64);
+            })
         })
     }).catch(function(error) {
         console.log(error);
