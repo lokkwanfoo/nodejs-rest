@@ -13,6 +13,10 @@ Office.initialize = function (reason) {
         $("#getGraphAccessTokenButton").click(function () {
                 getOneDriveFiles();
         });
+
+        $("#test").click(function () {
+            test("asdads");
+    });
     });
 }
 
@@ -26,6 +30,24 @@ Office.initialize = function (reason) {
         getDataWithoutAuthChallenge();
     }   
 
+    function test(test) {
+        Word.run(function (context) {
+
+            context.document.body.insertParagraph(test,"Start");
+
+            // context.document.body.insertFileFromBase64(test, "Start");
+
+     
+            return context.sync();
+        })
+        .catch(function (error) {
+            console.log("Error: " + error);
+            if (error instanceof OfficeExtension.Error) {
+                console.log("Debug info: " + JSON.stringify(error.debugInfo));
+            }
+        });
+    }
+
     // Called in the first attempt to use the on-behalf-of flow. The assumption
     // is that single factor authentication is all that is needed.
     function getDataWithoutAuthChallenge() {
@@ -34,8 +56,10 @@ Office.initialize = function (reason) {
                 if (result.status === "succeeded") {
                     accessToken = result.value;
                     getData("/api/template", accessToken, "template");
+                    test("Succeeded")
                 }
                 else {
+                    test(result.error.message)
                     console.log(result)
                     handleClientSideErrors(result);
                     console.log("Code: " + result.error.code);
@@ -75,10 +99,12 @@ Office.initialize = function (reason) {
                 getDataUsingAuthChallenge(result[0]);
             } else {
                 showResult(result);
+                test(result);
             }
         })
         .fail(function (result) {
             handleServerSideErrors(result);
+            test("error")
             console.log(result.responseJSON.error);
         });
     }
