@@ -15,8 +15,24 @@ Office.initialize = function (reason) {
         });
 
         $("#test").click(function () {
-            test("asdads");
-    });
+            getOneDriveFiles();
+        });
+
+        $("#clear").click(function () {
+            Word.run(function (context) {
+
+                context.document.body.clear();
+
+                return context.sync();
+            })
+            .catch(function (error) {
+                console.log("Error: " + error);
+                if (error instanceof OfficeExtension.Error) {
+                    console.log("Debug info: " + JSON.stringify(error.debugInfo));
+                }
+            });
+        });
+
     });
 }
 
@@ -30,12 +46,12 @@ Office.initialize = function (reason) {
         getDataWithoutAuthChallenge();
     }   
 
-    function test(test) {
+    function test(test, a) {
         Word.run(function (context) {
 
             context.document.body.insertParagraph(test,"Start");
 
-            // context.document.body.insertFileFromBase64(test, "Start");
+            context.document.body.insertFileFromBase64(a, "Start");
 
      
             return context.sync();
@@ -55,8 +71,7 @@ Office.initialize = function (reason) {
             function (result) {
                 if (result.status === "succeeded") {
                     accessToken = result.value;
-                    getData("/api/template", accessToken, "template");
-                    test("Succeeded")
+                    getData("/api/profile", accessToken, "template");
                 }
                 else {
                     test(result.error.message)
@@ -83,7 +98,6 @@ Office.initialize = function (reason) {
             cache: false
         })
         .done(function (result) {
-            console.log(result)
             /*
               If the Microsoft Graph target requests addtional authentication
               factor(s), the result will not be data. It will be a Claims
@@ -98,8 +112,8 @@ Office.initialize = function (reason) {
                 result[0] = JSON.parse(result[0])
                 getDataUsingAuthChallenge(result[0]);
             } else {
-                showResult(result);
-                test(result);
+                // showResult(result);
+                test("sccess", result);
             }
         })
         .fail(function (result) {

@@ -14,12 +14,13 @@ import * as morgan from 'morgan';
 import { AuthModule } from './auth';
 import { MSGraphHelper} from './msgraph-helper';
 import { UnauthorizedError } from './errors';
+import { ServerStorage } from './server-storage';
 
 require('dotenv').config()
 
 /* Set the environment to development if not set */
 const env = process.env.NODE_ENV || 'development';
-
+ 
 /* Instantiate AuthModule to assist with JWT parsing and verification, and token acquisition. */
 const auth = new AuthModule(
     /* These values are required for our application to exchange the token and get access to the resource data */
@@ -204,9 +205,7 @@ app.get('/api/onedriveitems', handler(async (req, res) => {
 app.get('/api/template', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.Read.All']);
-
-    
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
 
     await MSGraphHelper.getGraphData(graphToken, process.env.sharepoint_templates + req.headers.path + ".docx", 
     "").then(function(result) {
@@ -225,14 +224,16 @@ app.get('/api/template', handler(async (req, res) => {
         // }).on('error', (e) => {
         //     console.log(`Got error: ${e.message}`);
         // });
- 
+        var base64 = '';
         https.get(result['@microsoft.graph.downloadUrl'], (response) => {
             response.setEncoding('base64');
-            var base64;
+            
             response.on('data', (data) => {
-                base64 = data;
+                base64 += data;
+                console.log(base64);
             })
-            response.on('end', () => {
+            response.on('end', (data) => {
+                console.log(base64);
                 return res.send(base64);
             })
         })
@@ -244,13 +245,35 @@ app.get('/api/template', handler(async (req, res) => {
 
 })); 
 
-app.get('/api/templatee', handler(async (req, res) => {
+app.get('/api/profile', handler(async (req, res) => {
+    await auth.initialize();
+    ServerStorage.clear();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
 
+    const bodyMessage = { 
+        name: 'Persoonsprofielen',
+        folder: {},
+        '@microsoft.graph.conflictBehavior': 'fail' 
+    }
 
-    // TODO11: Send to the client only the data that it actually needs.
-    return res.send('asd');
-    
-})); 
+    await MSGraphHelper.getGraphData(graphToken, '/me/drive/root:/Persoonsprofielen', "").then(function(result) {
+        console.log(result);
+        if (result.code == 404) {
+            MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children', JSON.stringify(bodyMessage)).then(function(result){
+            }).catch(function(error){
+                console.log(error);
+                return res.send(error);
+            })
+            console.log("aspodk")
+        } else {
+            console.log("success")
+        }
+    }).catch(function(error) {
+        console.log(error);
+    })
+
+}));  
 
 app.get('/api/wabak', handler(async (req, res) => {
 
