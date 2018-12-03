@@ -251,15 +251,18 @@ app.get('/api/profile', handler(async (req, res) => {
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
 
-    const bodyMessage = { 
-        name: 'Persoonsprofielen',
-        folder: {},
-        '@microsoft.graph.conflictBehavior': 'fail' 
-    }
+    
 
     await MSGraphHelper.getGraphData(graphToken, '/me/drive/root:/Persoonsprofielen', "").then(function(result) {
         console.log(result);
         if (result.code == 404) {
+
+            const bodyMessage = { 
+                name: 'Persoonsprofielen',
+                folder: {},
+                '@microsoft.graph.conflictBehavior': 'fail' 
+            }
+
             MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children', JSON.stringify(bodyMessage)).then(function(result){
             }).catch(function(error){
                 console.log(error);
@@ -267,7 +270,18 @@ app.get('/api/profile', handler(async (req, res) => {
             })
             console.log("aspodk")
         } else {
-            console.log("success")
+
+            const bodyMessage = { 
+                name: 'Persoonsprofielen',
+                folder: {},
+                '@microsoft.graph.conflictBehavior': 'fail' 
+            }
+
+            MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children/Persoonsprofielen/children', JSON.stringify(bodyMessage)).then(function(result){
+            }).catch(function(error){
+                console.log(error);
+                return res.send(error);
+            })
         }
     }).catch(function(error) {
         console.log(error);
