@@ -8,8 +8,6 @@ import * as https from 'https';
 
 export class ODataHelper {
 
-    
-
     static getData(accessToken: string, 
                    domain: string, 
                    apiURLsegment: string, 
@@ -71,13 +69,14 @@ export class ODataHelper {
     static postData(accessToken: string, 
                    domain: string,
                    apiURLsegment: string,
-                   bodyMessage: string ,
+                   bodyMessage: string,
+                   method: string,
                    apiVersion?: string) {     
                     
         return new Promise<any>((resolve, reject) => {
             var options = {
                 host: domain,
-                method: 'POST',
+                method: method,
                 path: apiVersion + apiURLsegment,
                 headers: {
                     'Content-Type': 'application/json',
@@ -89,10 +88,10 @@ export class ODataHelper {
                 },
                 body: bodyMessage
             }; 
+
             var req = https.request(options, (res) => {
-              
                 res.on('data', (d) => {
-                  process.stdout.write(d);
+                    resolve(process.stdout.write(d));
                 });
             });
               
@@ -100,11 +99,46 @@ export class ODataHelper {
                 console.error(e);
             });
               
-            req.write(JSON.stringify({ 
-                name: 'Persoonsprofielen',
-                folder: {},
-                '@microsoft.graph.conflictBehavior': 'rename' 
-            }));
+            req.write(bodyMessage);
+            req.end();
+
+        });
+    }
+
+    static putData(accessToken: string, 
+                   domain: string,
+                   apiURLsegment: string,
+                   bodyMessage: string,
+                   method: string,
+                   apiVersion?: string) {     
+                    
+        return new Promise<any>((resolve, reject) => {
+            var options = {
+                host: domain,
+                method: method,
+                path: apiVersion + apiURLsegment,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + accessToken,
+                    'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+                    'Expires': '-1',
+                    'Pragma': 'no-cache'
+                },
+                body: bodyMessage
+            }; 
+
+            var req = https.request(options, (res) => {
+              
+                res.on('data', (d) => {
+                    resolve(process.stdout.write(d));
+                });
+            });
+              
+            req.on('error', (e) => {
+                console.error(e);
+            });
+              
+            req.write(bodyMessage);
             req.end();
 
         });

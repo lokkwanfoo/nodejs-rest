@@ -14,7 +14,6 @@ import * as morgan from 'morgan';
 import { AuthModule } from './auth';
 import { MSGraphHelper} from './msgraph-helper';
 import { UnauthorizedError } from './errors';
-import { ServerStorage } from './server-storage';
 
 require('dotenv').config()
 
@@ -206,78 +205,73 @@ app.get('/api/template', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
-
-    await MSGraphHelper.getGraphData(graphToken, process.env.sharepoint_templates + req.headers.path + ".docx", 
+    //Get template
+    await MSGraphHelper.getGraphData(graphToken, process.env.sharepoint_templates + req.headers.path, 
     "").then(function(result) {
-
-        // https.get(result['@microsoft.graph.downloadUrl'], (resp) => {
-        //     resp.setEncoding('base64');
-        //     var body = "data:" + resp.headers["content-type"] + ";base64,";
-        //     resp.on('data', (data) => { 
-        //         console.log(data);
-        //         return res.send(data); 
-        //     });
-        //     resp.on('end', () => {
-        //         console.log(body);
-        //         //return res.json({result: body, status: 'success'});
-        //     });
-        // }).on('error', (e) => {
-        //     console.log(`Got error: ${e.message}`);
-        // });
+        //Define a variable to put data in
         var base64 = '';
         https.get(result['@microsoft.graph.downloadUrl'], (response) => {
+            //Download template as base64 string
             response.setEncoding('base64');
             
             response.on('data', (data) => {
+                //Put the base64 inside the variable
                 base64 += data;
-                console.log(base64);
             })
             response.on('end', (data) => {
-                console.log(base64);
+                //Return to the front-end
                 return res.send(base64);
             })
         })
     }).catch(function(error) {
         console.log(error);
     });
-        
-    
 
 })); 
 
-app.get('/api/profile', handler(async (req, res) => {
+app.post('/api/profile', handler(async (req, res) => {
+
+    console.log(req.body)
+
     await auth.initialize();
-    ServerStorage.clear();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
 
-    
-
+    //Make a call to Persoonsprofielen folder
     await MSGraphHelper.getGraphData(graphToken, '/me/drive/root:/Persoonsprofielen', "").then(function(result) {
-        console.log(result);
+        //If folder does not exist, 
         if (result.code == 404) {
-
+            //define the folder structure
             const bodyMessage = { 
                 name: 'Persoonsprofielen',
                 folder: {},
                 '@microsoft.graph.conflictBehavior': 'fail' 
             }
-
-            MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children', JSON.stringify(bodyMessage)).then(function(result){
+            //and generate it
+            MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children', JSON.stringify(bodyMessage), 'POST').then(function(result){
             }).catch(function(error){
                 console.log(error);
                 return res.send(error);
             })
-            console.log("aspodk")
-        } else {
-
+        } 
+        //If folder does exist
+        else {
+            //retrieve profile.json str
+            var profile = req.body;
+            //
             const bodyMessage = { 
-                name: 'Persoonsprofielen',
-                folder: {},
-                '@microsoft.graph.conflictBehavior': 'fail' 
+                name: 'Persoonsprofielen.json',
+                file: {},
+                '@microsoft.graph.conflictBehavior': 'replace' 
             }
+            //generate profile file
+            MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children/Persoonsprofielen/children', JSON.stringify(bodyMessage), 'POST').then(function(result){
+                //and put content inside the file
+                MSGraphHelper.putGraphData(graphToken, "/me/drive/root:/Persoonsprofielen/" + bodyMessage.name + ":/content", JSON.stringify(profile), 'put').then(function(result) {
+                }).catch(function(error){
+                    console.log(error);
+                })
 
-            MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children/Persoonsprofielen/children', JSON.stringify(bodyMessage)).then(function(result){
             }).catch(function(error){
                 console.log(error);
                 return res.send(error);
@@ -289,11 +283,36 @@ app.get('/api/profile', handler(async (req, res) => {
 
 }));  
 
+app.get('/api/profile', handler(async (req, res) => {
+    await auth.initialize();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+    console.log(process.env.onedrive_profile);
+
+    await MSGraphHelper.getGraphData(graphToken, process.env.onedrive_profile, 
+        "").then(function(result) {
+            console.log(result.value)
+            res.send(result.value)
+        //     https.get(result['@microsoft.graph.downloadUrl'], (response) => {
+        //         console.log(response)
+                
+        //         response.on('data', (data) => {
+        //         })
+        //         response.on('end', (data) => {
+        //             return res.send();
+        //         })
+        //     })
+        // }).catch(function(error) {
+        //     console.log(error);
+        // });
+
+}));
+
 app.get('/api/wabak', handler(async (req, res) => {
 
-    console.log(process.env.client_secret);
+    var profile = require(__dirname + "/profile.json");
+    console.log(profile);
 
-    return res.send('');
 }));
 
 

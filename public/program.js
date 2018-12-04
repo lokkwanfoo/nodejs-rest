@@ -11,11 +11,15 @@ Office.initialize = function (reason) {
     // After the DOM is loaded, app-specific code can run.
     // Add any initialization logic to this function.
         $("#getGraphAccessTokenButton").click(function () {
-                getOneDriveFiles();
+                getOneDriveFiles("/api/template", "template.docx");
         });
 
         $("#test").click(function () {
-            getOneDriveFiles();
+            postOneDriveFiles("/api/profile");
+        });
+
+        $("#get").click(function () {
+            getOneDriveFiles("/api/profile", "Persoonsprofielen.json");
         });
 
         $("#clear").click(function () {
@@ -40,11 +44,17 @@ Office.initialize = function (reason) {
     var triedWithoutForceConsent = false;
     var timesMSGraphErrorReceived = false;
 
-    function getOneDriveFiles() {
+    function getOneDriveFiles(apiURLsegment, nameDocument) {
         timesGetOneDriveFilesHasRun++;
         triedWithoutForceConsent = true;
-        getDataWithoutAuthChallenge();
+        getDataWithoutAuthChallenge(apiURLsegment, nameDocument);
     }   
+
+    function postOneDriveFiles(apiURLsegment, nameDocument) {
+        timesGetOneDriveFilesHasRun++;
+        triedWithoutForceConsent = true;
+        postDataWithoutAuthChallenge(apiURLsegment, nameDocument);
+    }  
 
     function test(test, a) {
         Word.run(function (context) {
@@ -66,12 +76,31 @@ Office.initialize = function (reason) {
 
     // Called in the first attempt to use the on-behalf-of flow. The assumption
     // is that single factor authentication is all that is needed.
-    function getDataWithoutAuthChallenge() {
+    function getDataWithoutAuthChallenge(apiURLsegment, nameDocument) {
         Office.context.auth.getAccessTokenAsync({forceConsent: false},
             function (result) {
                 if (result.status === "succeeded") {
                     accessToken = result.value;
-                    getData("/api/profile", accessToken, "template");
+                    getData(apiURLsegment, accessToken, nameDocument);
+                }
+                else {
+                    test(result.error.message)
+                    console.log(result)
+                    handleClientSideErrors(result);
+                    console.log("Code: " + result.error.code);
+                    console.log("Message: " + result.error.message);
+                    console.log("name: " + result.error.name);
+                    // document.getElementById("getGraphAccessTokenButton").disabled = true;
+                }
+            });
+    }
+
+    function postDataWithoutAuthChallenge(apiURLsegment, nameDocument) {
+        Office.context.auth.getAccessTokenAsync({forceConsent: false},
+            function (result) {
+                if (result.status === "succeeded") {
+                    accessToken = result.value;
+                    postData(apiURLsegment, accessToken, nameDocument);
                 }
                 else {
                     test(result.error.message)
@@ -112,9 +141,44 @@ Office.initialize = function (reason) {
                 result[0] = JSON.parse(result[0])
                 getDataUsingAuthChallenge(result[0]);
             } else {
+                console.log(result)
                 // showResult(result);
                 test("sccess", result);
             }
+        })
+        .fail(function (result) {
+            handleServerSideErrors(result);
+            test("error")
+            console.log(result.responseJSON.error);
+        });
+    }
+
+    function postData(relativeUrl, accessToken, path) {
+
+        var profile = {
+            "name": "asdasdsd",
+            "initials": "",
+            "phonenumber":"",
+            "faxnumber": "",
+            "mobilenumber":"",
+            "email": "",
+            "roleDutch": "",
+            "roleEnglish": "",
+            "roleGerman": ""
+        }
+
+        $.ajax({
+            url: relativeUrl,
+            headers: { "Authorization": "Bearer " + accessToken, "Path": path},
+            type: "POST",
+            // Turn off caching when debugging to force a fetch of data
+            // with each call.
+            cache: false,
+            data: profile
+        })
+        .done(function (result) {
+            console.log(result)
+            // test("success", result);
         })
         .fail(function (result) {
             handleServerSideErrors(result);

@@ -18,9 +18,16 @@ export class MSGraphHelper {
         })        
     }      
     
-    static postGraphData(accessToken: string, apiURLsegment: string, bodyMessage: string) {
+    static postGraphData(accessToken: string, apiURLsegment: string, bodyMessage: string, method: string) {
         return new Promise<any>(async (resolve, reject) => { 
-            const oData = await ODataHelper.postData(accessToken, this.domain, apiURLsegment, bodyMessage, this.versionURLsegment);
+            const oData = await ODataHelper.postData(accessToken, this.domain, apiURLsegment, bodyMessage, method, this.versionURLsegment);
+            resolve(oData);
+        })        
+    } 
+
+    static putGraphData(accessToken: string, apiURLsegment: string, bodyMessage: string, method: string) {
+        return new Promise<any>(async (resolve, reject) => { 
+            const oData = await ODataHelper.putData(accessToken, this.domain, apiURLsegment, bodyMessage, method, this.versionURLsegment);
             resolve(oData);
         })        
     } 
