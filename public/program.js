@@ -71,6 +71,37 @@ Office.initialize = function (reason) {
     var triedWithoutForceConsent = false;
     var timesMSGraphErrorReceived = false;
 
+    function getBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+        });
+    }
+
+    function uploadPhoto(e) 
+    {
+        Word.run(function (context) {
+
+            let photo = e.files[0] 
+
+            getBase64(photo).then(
+                data => 
+                context.document.body.insertInlinePictureFromBase64(data.substr(data.indexOf(',') + 1), "Start")
+            );
+
+            return context.sync();
+        })
+        .catch(function (error) {
+            console.log("Error: " + error);
+            if (error instanceof OfficeExtension.Error) {
+                console.log("Debug info: " + JSON.stringify(error.debugInfo));
+            }
+        });
+        
+    }
+
     function getOneDriveFiles(apiURLsegment, nameDocument) {
         timesGetOneDriveFilesHasRun++;
         triedWithoutForceConsent = true;
