@@ -11,15 +11,41 @@ Office.initialize = function (reason) {
     // After the DOM is loaded, app-specific code can run.
     // Add any initialization logic to this function.
         $("#getGraphAccessTokenButton").click(function () {
-                getOneDriveFiles("/api/template", "template.docx");
+            getOneDriveFiles("/api/template", "template.docx");
         });
 
         $("#test").click(function () {
             postOneDriveFiles("/api/profile");
         });
 
+        $("#gets").click(function () {
+            getOneDriveFiles("/api/profiles");
+        });
+
         $("#get").click(function () {
-            getOneDriveFiles("/api/profile", "Persoonsprofielen.json");
+            getOneDriveFiles("/api/profile", profiles[0].id);
+
+        });
+
+        $("#paste").click(function () {
+
+            console.log(profile)
+
+            Word.run(function (context) {
+
+                const serviceNameContentControl = context.document.contentControls.getByTag("serviceName").getFirst();
+                serviceNameContentControl.insertText("Fabrikam Online Productivity Suite", "Replace");
+
+                return context.sync();
+            })
+            .catch(function (error) {
+                console.log("Error: " + error);
+                if (error instanceof OfficeExtension.Error) {
+                    console.log("Debug info: " + JSON.stringify(error.debugInfo));
+                }
+            });
+
+            
         });
 
         $("#clear").click(function () {
@@ -39,10 +65,42 @@ Office.initialize = function (reason) {
 
     });
 }
-
+    var profiles = [];
+    var profile = {};
     var timesGetOneDriveFilesHasRun = 0;
     var triedWithoutForceConsent = false;
     var timesMSGraphErrorReceived = false;
+
+    function getBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+        });
+    }
+
+    function uploadPhoto(e) 
+    {
+        Word.run(function (context) {
+
+            let photo = e.files[0] 
+
+            getBase64(photo).then(
+                data => 
+                context.document.body.insertInlinePictureFromBase64(data.substr(data.indexOf(',') + 1), "Start")
+            );
+
+            return context.sync();
+        })
+        .catch(function (error) {
+            console.log("Error: " + error);
+            if (error instanceof OfficeExtension.Error) {
+                console.log("Debug info: " + JSON.stringify(error.debugInfo));
+            }
+        });
+        
+    }
 
     function getOneDriveFiles(apiURLsegment, nameDocument) {
         timesGetOneDriveFilesHasRun++;
@@ -63,7 +121,6 @@ Office.initialize = function (reason) {
 
             context.document.body.insertFileFromBase64(a, "Start");
 
-     
             return context.sync();
         })
         .catch(function (error) {
@@ -127,23 +184,22 @@ Office.initialize = function (reason) {
             cache: false
         })
         .done(function (result) {
-            /*
-              If the Microsoft Graph target requests addtional authentication
-              factor(s), the result will not be data. It will be a Claims
-              JSON telling AAD what addtional factors the user must provide.
-              Start a new sign-on that passes this Claims string to AAD so that
-              it will provide the needed prompts.
-            */
-
+            if (Array.isArray(result)){ 
+                profiles = result;
+                console.log(profiles)
+            } 
             // If the result contains 'capolids', then it is the Claims string,
             // not the data.
-            if (result[0].indexOf('capolids') !== -1) {
+            else if (result[0].indexOf('capolids') !== -1) {
                 result[0] = JSON.parse(result[0])
                 getDataUsingAuthChallenge(result[0]);
-            } else {
-                console.log(result)
-                // showResult(result);
-                test("sccess", result);
+            } 
+            // else if (typeof result === 'string') {
+            //     test("", result);
+            // }
+            else {
+                test("", result);
+                profile = JSON.parse(result);
             }
         })
         .fail(function (result) {
@@ -157,7 +213,7 @@ Office.initialize = function (reason) {
 
         var profile = {
             "name": "asdasdsd",
-            "initials": "",
+            "initials": "asdasdasd",
             "phonenumber":"",
             "faxnumber": "",
             "mobilenumber":"",
@@ -167,9 +223,11 @@ Office.initialize = function (reason) {
             "roleGerman": ""
         }
 
+        var profileName = 'Persoonsprofiel';
+
         $.ajax({
             url: relativeUrl,
-            headers: { "Authorization": "Bearer " + accessToken, "Path": path},
+            headers: { "Authorization": "Bearer " + accessToken, "Path": path, "profileName": profileName},
             type: "POST",
             // Turn off caching when debugging to force a fetch of data
             // with each call.
@@ -241,7 +299,8 @@ Office.initialize = function (reason) {
             //        nor Micrososoft Account.
 
             case 13003: 
-                showResult(['Please sign out of Office and sign in again with a work or school account, or Microsoft Account. Other kinds of accounts, like corporate domain accounts do not work.']);
+                showResult(['Please sign out of Office and sign in again with a work or school account, or Microsoft Account.' +
+                'Other kinds of accounts, like corporate domain accounts do not work.']);
                 break;   
     
             // TODO5: Handle an unspecified error from the Office host.

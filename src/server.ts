@@ -231,7 +231,7 @@ app.get('/api/template', handler(async (req, res) => {
 
 app.post('/api/profile', handler(async (req, res) => {
 
-    console.log(req.body)
+    console.log(req.headers.profilename)
 
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
@@ -260,7 +260,7 @@ app.post('/api/profile', handler(async (req, res) => {
             var profile = req.body;
             //
             const bodyMessage = { 
-                name: 'Persoonsprofielen.json',
+                name: req.headers.profilename + '.json',
                 file: {},
                 '@microsoft.graph.conflictBehavior': 'replace' 
             }
@@ -283,35 +283,53 @@ app.post('/api/profile', handler(async (req, res) => {
 
 }));  
 
+app.get('/api/profiles', handler(async (req, res) => {
+    await auth.initialize();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+
+    //Define array
+    var profiles = [];
+
+    await MSGraphHelper.getGraphData(graphToken, process.env.onedrive_profile, "").then(function(result) {
+            //For every object in the result array, put in only the id and name in profiles array
+            for(var i in result.value) {
+                profiles[i] = { 
+                    id: result.value[i].id,
+                    name: result.value[i].name
+                }
+            }
+        }).catch(function(error) {
+            console.log(error);
+        });
+    res.send(profiles)
+
+}));
+
 app.get('/api/profile', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
-    console.log(process.env.onedrive_profile);
 
-    await MSGraphHelper.getGraphData(graphToken, process.env.onedrive_profile, 
-        "").then(function(result) {
-            console.log(result.value)
-            res.send(result.value)
-        //     https.get(result['@microsoft.graph.downloadUrl'], (response) => {
-        //         console.log(response)
-                
-        //         response.on('data', (data) => {
-        //         })
-        //         response.on('end', (data) => {
-        //             return res.send();
-        //         })
-        //     })
-        // }).catch(function(error) {
-        //     console.log(error);
-        // });
+    await MSGraphHelper.getGraphData(graphToken, '/me/drive/items/' + req.headers.path, 
+        "").then(function(result) {  
+            https.get(result['@microsoft.graph.downloadUrl'], (response) => {
+                //Define profile variable
+                var profile = '';
 
-}));
+                response.on('data', (data) => {
+                    //Add data to profile
+                    profile += data;
+                })
+                response.on('end', (data) => {
+                    //Send the profile back
+                    return res.send(profile);
+                })
 
-app.get('/api/wabak', handler(async (req, res) => {
-
-    var profile = require(__dirname + "/profile.json");
-    console.log(profile);
+            })
+        }).catch(function(error) {
+            console.log(error);
+        });
 
 }));
 
