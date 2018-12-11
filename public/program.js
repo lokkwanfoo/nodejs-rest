@@ -27,14 +27,32 @@ Office.initialize = function (reason) {
 
         });
 
+        $("#dialog").click(function () {
+            Office.context.ui.displayDialogAsync('https://localhost:3000/profile.html', {height: 50, width: 50}, function(asyncResult) {
+                dialog = asyncResult.value;
+                dialog.addEventHandler(Office.EventType.DialogMessageReceived, processMessage);
+                Office.context.auth.getAccessTokenAsync({forceConsent: false},
+                    function (result) {
+                        localStorage.setItem("accessToken", result.value);
+                    });
+            });
+        });
+
+
         $("#paste").click(function () {
 
             console.log(profile)
 
             Word.run(function (context) {
+                // const logo = context.document.contentControls.getByTag("logo").getFirst();
 
-                const serviceNameContentControl = context.document.contentControls.getByTag("serviceName").getFirst();
-                serviceNameContentControl.insertText("Fabrikam Online Productivity Suite", "Replace");
+                // logo.insertInlinePictureFromBase64(image, "Replace");
+
+                const logo = context.document.contentControls.getByTag("bankaccount").getFirst();
+                logo.insertInlinePictureFromBase64(profile.image, "Start");
+
+                const subject = context.document.contentControls.getByTag("subject").getFirst();
+                subject.insertText(profile.name, "Replace");
 
                 return context.sync();
             })
@@ -67,9 +85,14 @@ Office.initialize = function (reason) {
 }
     var profiles = [];
     var profile = {};
+    var image;
     var timesGetOneDriveFilesHasRun = 0;
     var triedWithoutForceConsent = false;
     var timesMSGraphErrorReceived = false;
+
+    function processMessage(arg) {
+        console.log(messageFromDialog)
+    }
 
     function getBase64(file) {
         return new Promise((resolve, reject) => {
@@ -88,7 +111,8 @@ Office.initialize = function (reason) {
 
             getBase64(photo).then(
                 data => 
-                context.document.body.insertInlinePictureFromBase64(data.substr(data.indexOf(',') + 1), "Start")
+                // context.document.body.insertInlinePictureFromBase64(data.substr(data.indexOf(',') + 1), "Start")
+                image = data.substr(data.indexOf(',') + 1)
             );
 
             return context.sync();
@@ -198,6 +222,7 @@ Office.initialize = function (reason) {
             //     test("", result);
             // }
             else {
+                console.log(result)
                 test("", result);
                 profile = JSON.parse(result);
             }
@@ -220,7 +245,8 @@ Office.initialize = function (reason) {
             "email": "",
             "roleDutch": "",
             "roleEnglish": "",
-            "roleGerman": ""
+            "roleGerman": "",
+            "image": image
         }
 
         var profileName = 'Persoonsprofiel';
