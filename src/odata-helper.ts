@@ -90,9 +90,13 @@ export class ODataHelper {
             }; 
 
             var req = https.request(options, (res) => {
+                if (res.statusCode == 204) {
+                    resolve(process.stdout.write("Deleted"));
+                }
                 res.on('data', (d) => {
                     resolve(process.stdout.write(d));
                 });
+                
             });
               
             req.on('error', (e) => {

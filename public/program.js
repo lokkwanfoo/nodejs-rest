@@ -237,15 +237,15 @@ Office.initialize = function (reason) {
     function postData(relativeUrl, accessToken, path) {
 
         var profile = {
-            "name": "asdasdsd",
-            "initials": "asdasdasd",
-            "phonenumber":"",
+            "name": "T. Tester",
+            "initials": "t.t.",
+            "phonenumber":"0201234567",
             "faxnumber": "",
-            "mobilenumber":"",
-            "email": "",
-            "roleDutch": "",
-            "roleEnglish": "",
-            "roleGerman": "",
+            "mobilenumber":"0687654321",
+            "email": "t.tester@vandoorne.nl",
+            "roleDutch": "Advocaat",
+            "roleEnglish": "Attorney",
+            "roleGerman": "Rechtsanwalt",
             "image": image
         }
 

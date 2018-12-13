@@ -28,10 +28,25 @@
 
                 </select>
 
+            
+            <form>
+                <label for="fname">Name: </label> <input type="text" id="name">
+                <label for="fname">Initialen voor referentie in brief: </label><input type="text" id="initials" >
+                Telefoonnummer: <input type="text" id="phonenumber">
+                Faxnummer: <input type="text" id="faxnumber">
+                Mobiel nummer: <input type="text" id="mobilenumber">
+                E-mailadres: <input type="text" id="emailaddress">
+                Locatie: <input type="text" id="location">
+
+                <br>
+                Profielnaam: <input type="text" id="profilename">
+            </form>
+
             <p align="center">
                 <button id="getGraphAccessTokenButton" class="popupButton ms-Button ms-Button--primary"><span class="ms-Button-label">Get Files </span></button>
                 <button id="getProfiles" class="popupButton ms-Button ms-Button--primary"><span class="ms-Button-label">Get profiles </span></button>
-                <button id="getProfile" class="popupButton ms-Button ms-Button--primary"><span class="ms-Button-label">Get profiles </span></button>
+                <button id="saveProfile" class="popupButton ms-Button ms-Button--primary"><span class="ms-Button-label">Save profile </span></button>
+                <button id="deleteProfile" class="popupButton ms-Button ms-Button--primary"><span class="ms-Button-label">Delete profile </span></button>
             </p>
         </div>
     </main>

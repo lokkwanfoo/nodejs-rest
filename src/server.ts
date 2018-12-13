@@ -209,6 +209,7 @@ app.get('/api/template', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+
     //Get template
     await MSGraphHelper.getGraphData(graphToken, process.env.sharepoint_templates + req.headers.path, 
     "").then(function(result) {
@@ -233,9 +234,38 @@ app.get('/api/template', handler(async (req, res) => {
 
 })); 
 
-app.post('/api/profile', handler(async (req, res) => {
+app.get('/get/templates', handler(async (req, res) => {
+    await auth.initialize();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+    
+    //Get template
+    await MSGraphHelper.getGraphData(graphToken, process.env.sharepoint_templates + req.headers.path, 
+    "").then(function(result) {
 
-    console.log(req.headers.profilename)
+    }).catch(function(error) {
+        console.log(error);
+    });
+
+})); 
+
+app.get('/delete/profile', handler(async (req, res) => {
+    await auth.initialize();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+
+    MSGraphHelper.postGraphData(graphToken, '/me/drive/items/' + req.headers.path, "", 'DELETE').then(function(result){
+        console.log("Success")
+        return res.send("Success");
+    }).catch(function(error){
+        console.log("error")
+        console.log(error);
+        return res.send(error);
+    })
+
+}));  
+
+app.post('/api/profile', handler(async (req, res) => {
 
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
@@ -271,7 +301,8 @@ app.post('/api/profile', handler(async (req, res) => {
             //generate profile file
             MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children/Persoonsprofielen/children', JSON.stringify(bodyMessage), 'POST').then(function(result){
                 //and put content inside the file
-                MSGraphHelper.putGraphData(graphToken, "/me/drive/root:/Persoonsprofielen/" + bodyMessage.name + ":/content", JSON.stringify(profile), 'put').then(function(result) {
+                MSGraphHelper.postGraphData(graphToken, "/me/drive/root:/Persoonsprofielen/" + bodyMessage.name + ":/content", JSON.stringify(profile), 'PUT').then(function(result) {
+                return res.send("Success")
                 }).catch(function(error){
                     console.log(error);
                 })
