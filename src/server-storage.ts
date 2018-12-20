@@ -21,6 +21,11 @@ export class ServerStorage {
             return null;
         }
     }
+
+    public static remove(key: string) {
+        storage.initSync();
+        storage.removeItemSync(key);
+    }
     
     public static clear() {
         storage.initSync();

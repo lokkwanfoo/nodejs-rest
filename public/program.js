@@ -10,20 +10,19 @@ Office.initialize = function (reason) {
     $(document).ready(function () {
     // After the DOM is loaded, app-specific code can run.
     // Add any initialization logic to this function.
-        $("#getGraphAccessTokenButton").click(function () {
-            getOneDriveFiles("/api/template", "template.docx");
-        });
+
+    getOneDriveFiles("/api/templates");
 
         $("#test").click(function () {
-            postOneDriveFiles("/api/profile");
+            getOneDriveFiles("/clear");
         });
 
         $("#gets").click(function () {
-            getOneDriveFiles("/api/profiles");
+            getOneDriveFiles("/api/templates");
         });
 
         $("#get").click(function () {
-            getOneDriveFiles("/api/profile", profiles[0].id);
+            getTemplateWithoutAuth("/api/template", "01KPZU6TPBTUP5KYM5XNF3VTZIVUKQKDXY")
 
         });
 
@@ -41,18 +40,16 @@ Office.initialize = function (reason) {
 
         $("#paste").click(function () {
 
-            console.log(profile)
-
             Word.run(function (context) {
                 // const logo = context.document.contentControls.getByTag("logo").getFirst();
 
                 // logo.insertInlinePictureFromBase64(image, "Replace");
 
-                const logo = context.document.contentControls.getByTag("bankaccount").getFirst();
-                logo.insertInlinePictureFromBase64(profile.image, "Start");
+                // const logo = context.document.contentControls.getByTag("bankaccount").getFirst();
+                // logo.insertInlinePictureFromBase64(profile.image, "Start");
 
                 const subject = context.document.contentControls.getByTag("subject").getFirst();
-                subject.insertText(profile.name, "Replace");
+                subject.insertText("Rekening", "Replace");
 
                 return context.sync();
             })
@@ -83,15 +80,16 @@ Office.initialize = function (reason) {
 
     });
 }
-    var profiles = [];
-    var profile = {};
+    var templates = [];
     var image;
+    var profile;
     var timesGetOneDriveFilesHasRun = 0;
     var triedWithoutForceConsent = false;
     var timesMSGraphErrorReceived = false;
 
     function processMessage(arg) {
-        console.log(messageFromDialog)
+        profile = JSON.parse(arg.message)
+        getTemplateWithoutAuth("/api/template", "01KPZU6TPBTUP5KYM5XNF3VTZIVUKQKDXY");
     }
 
     function getBase64(file) {
@@ -125,7 +123,7 @@ Office.initialize = function (reason) {
         });
         
     }
-
+    
     function getOneDriveFiles(apiURLsegment, nameDocument) {
         timesGetOneDriveFilesHasRun++;
         triedWithoutForceConsent = true;
@@ -138,12 +136,60 @@ Office.initialize = function (reason) {
         postDataWithoutAuthChallenge(apiURLsegment, nameDocument);
     }  
 
+    function generateTemplate(profile, template) {
+
+        Word.run(function (context) {
+
+            // const name = context.document.contentControls.getByTag("name").getFirst();
+            // name.insertText(profile.name, "Replace");
+
+            var wordDocument = context.application.createDocument(template);
+
+            var contentControls = context.document.contentControls;
+
+    // Queue a command to load the content controls collection.
+    console.log(contentControls.load('name'))
+
+
+            if (wordDocument) {
+                
+                // const name = context.document.contentControls.getByTag("name").getFirst();
+                // name.insertText(profile.name, "Replace");
+                wordDocument.open();
+                
+            }
+
+            return context.sync().then(function() {
+                if (wordDocument.contentControls.items.length !== 0) {
+                    for (var i = 0; i < wordDocument.contentControls.items.length; i++) {
+                        console.log(wordDocument.contentControls.items[i].id);
+                        console.log(wordDocument.contentControls.items[i].text);
+                        console.log(wordDocument.contentControls.items[i].tag);
+                    }
+                } else {
+                    console.log('No content controls in this document.');
+                }
+            });
+        })
+        .catch(function (error) {
+            console.log("Error: " + error);
+            if (error instanceof OfficeExtension.Error) {
+                console.log("Debug info: " + JSON.stringify(error.debugInfo));
+            }
+        });
+
+    }
+
     function test(test, a) {
         Word.run(function (context) {
 
-            context.document.body.insertParagraph(test,"Start");
+            var wordDocument = context.application.createDocument(a);
 
-            context.document.body.insertFileFromBase64(a, "Start");
+            if (wordDocument) {
+                wordDocument.open();
+             }
+
+            // context.document.body.insertFileFromBase64(a, "Start");
 
             return context.sync();
         })
@@ -157,7 +203,7 @@ Office.initialize = function (reason) {
 
     // Called in the first attempt to use the on-behalf-of flow. The assumption
     // is that single factor authentication is all that is needed.
-    function getDataWithoutAuthChallenge(apiURLsegment, nameDocument) {
+    async function getDataWithoutAuthChallenge(apiURLsegment, nameDocument) {
         Office.context.auth.getAccessTokenAsync({forceConsent: false},
             function (result) {
                 if (result.status === "succeeded") {
@@ -165,18 +211,14 @@ Office.initialize = function (reason) {
                     getData(apiURLsegment, accessToken, nameDocument);
                 }
                 else {
-                    test(result.error.message)
+                    // test(result.error.message)
                     console.log(result)
                     handleClientSideErrors(result);
-                    console.log("Code: " + result.error.code);
-                    console.log("Message: " + result.error.message);
-                    console.log("name: " + result.error.name);
-                    // document.getElementById("getGraphAccessTokenButton").disabled = true;
                 }
             });
     }
 
-    function postDataWithoutAuthChallenge(apiURLsegment, nameDocument) {
+    async function postDataWithoutAuthChallenge(apiURLsegment, nameDocument) {
         Office.context.auth.getAccessTokenAsync({forceConsent: false},
             function (result) {
                 if (result.status === "succeeded") {
@@ -187,17 +229,51 @@ Office.initialize = function (reason) {
                     test(result.error.message)
                     console.log(result)
                     handleClientSideErrors(result);
-                    console.log("Code: " + result.error.code);
-                    console.log("Message: " + result.error.message);
-                    console.log("name: " + result.error.name);
-                    // document.getElementById("getGraphAccessTokenButton").disabled = true;
+                }
+            });
+    }
+    
+    // Calls the specified URL or route (in the same domain as the add-in)
+    // and includes the specified access token.
+    async function getTemplateWithoutAuth(apiURLsegment, path) {
+
+        Office.context.auth.getAccessTokenAsync({forceConsent: false},
+            function (result) {
+                if (result.status === "succeeded") {
+                    accessToken = result.value;
+                    getTemplate(apiURLsegment, accessToken, path);
+                }
+                else {
+                    // test(result.error.message)
+                    console.log(result)
+                    handleClientSideErrors(result);
                 }
             });
     }
 
+    async function getTemplate(relativeUrl, accessToken, path) {
+
+        $.ajax({
+            url: relativeUrl,
+            headers: { "Authorization": "Bearer " + accessToken, "Path": path},
+            type: "GET",
+            // Turn off caching when debugging to force a fetch of data
+            // with each call.
+            cache: false
+        })
+        .done(function (result) {
+            generateTemplate(profile, result);
+        })
+        .fail(function (result) {
+            handleServerSideErrors(result);
+            test("error")
+            console.log(result.responseJSON.error);
+        });
+    }
+
     // Calls the specified URL or route (in the same domain as the add-in)
     // and includes the specified access token.
-    function getData(relativeUrl, accessToken, path) {
+    async function getData(relativeUrl, accessToken, path) {
 
         $.ajax({
             url: relativeUrl,
@@ -209,8 +285,8 @@ Office.initialize = function (reason) {
         })
         .done(function (result) {
             if (Array.isArray(result)){ 
-                profiles = result;
-                console.log(profiles)
+                templates = result;
+                console.log(result)
             } 
             // If the result contains 'capolids', then it is the Claims string,
             // not the data.
@@ -224,7 +300,7 @@ Office.initialize = function (reason) {
             else {
                 console.log(result)
                 test("", result);
-                profile = JSON.parse(result);
+                templates = result;
             }
         })
         .fail(function (result) {

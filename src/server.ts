@@ -14,6 +14,7 @@ import * as morgan from 'morgan';
 import { AuthModule } from './auth';
 import { MSGraphHelper} from './msgraph-helper';
 import { UnauthorizedError } from './errors';
+import { ServerStorage } from './server-storage';
 
 require('dotenv').config()
 
@@ -102,38 +103,6 @@ else {
  * When passed a JWT token in the header, it extracts it and
  * and exchanges for a token that has permissions to graph.
  */
-app.get('/api/values', handler(async (req, res) => {
-    /**
-     * Only initializes the auth the first time
-     * and uses the downloaded keys information subsequently.
-     */
-    await auth.initialize();
-    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' });
-
-    // We don't pass a resource parameter becuase the token endpoint is Azure AD V2.
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.Read.All']);
-
-    // Minimize the data that must come from MS Graph by specifying only the property we need ("name")
-    // and only the top 3 folder or file names.
-    const graphData = await MSGraphHelper.getGraphData(graphToken, "/me/drive/root/children", "?$select=name&$top=3");
-
-    // If Microsoft Graph returns an error, such as invalid or expired token,
-    // relay it to the client.
-    if (graphData.code) {
-        if (graphData.code === 401) {
-            throw new UnauthorizedError('Microsoft Graph error', graphData);
-        }
-    }
-
-    // Graph data includes OData metadata and eTags that we don't need.
-    // Send only what is actually needed to the client: the item names.
-    const itemNames: string[] = [];
-    const oneDriveItems: string[] = graphData['value'];
-    for (let item of oneDriveItems){
-        itemNames.push(item['name']);
-    }
-    return res.json(itemNames);
-}));
 
 /**
  * HTTP GET: /index.html
@@ -147,32 +116,9 @@ app.get('/profile.html', handler(async (req, res) => {
     return res.sendfile('profile.html');
 }));
 
-app.get('/api/me', handler(async (req, res) => {
-    // TODO7: Initialize the AuthModule object and validate the access token 
-    //        that the client-side received from the Office host.
-
-    await auth.initialize();
-    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-
-    // TODO8: Get a token to Microsoft Graph from either persistent storage 
-    //        or the "on behalf of" flow.
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.Read.All']);
-
-    // TODO9: Use the token to get data from Microsoft Graph.
-    const graphData = await MSGraphHelper.getGraphData(graphToken, "/me", "?");
-
-    // TODO10: Relay any errors from Microsoft Graph to the client.
-
-    if (graphData.code) {
-        if (graphData.code === 401) {
-            throw new UnauthorizedError('Microsoft Graph error', graphData);
-        }
-    }
-    
-    // TODO11: Send to the client only the data that it actually needs.
-    return res.json(graphData);
-    
-})); 
+app.get('/letter.html', handler(async (req, res) => {
+    return res.sendfile('letter.html');
+}));
 
 app.get('/api/onedriveitems', handler(async (req, res) => {
     // TODO7: Initialize the AuthModule object and validate the access token 
@@ -210,10 +156,10 @@ app.get('/api/template', handler(async (req, res) => {
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
 
+    var templateUrl = ServerStorage.retrieve(jwt);
     //Get template
-    await MSGraphHelper.getGraphData(graphToken, process.env.sharepoint_templates + req.headers.path, 
+    await MSGraphHelper.getGraphData(graphToken, "" + templateUrl + req.headers.path, 
     "").then(function(result) {
-        //Define a variable to put data in
         var base64 = '';
         https.get(result['@microsoft.graph.downloadUrl'], (response) => {
             //Download template as base64 string
@@ -228,21 +174,82 @@ app.get('/api/template', handler(async (req, res) => {
                 return res.send(base64);
             })
         })
+
     }).catch(function(error) {
         console.log(error);
     });
 
 })); 
 
-app.get('/get/templates', handler(async (req, res) => {
+app.get('/api/templates', handler(async (req, res) => {
+    await auth.initialize();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+    
+    //Get templates
+    await MSGraphHelper.getGraphData(graphToken, "/sites/root" , 
+    "").then(function(result) {
+
+        var siteId = result.id;
+
+        MSGraphHelper.getGraphData(graphToken, "/sites/" + siteId + ":/do365" , 
+        "").then(function(result) {
+            
+            var subsiteId = result.id;
+            
+            MSGraphHelper.getGraphData(graphToken, "/sites/" + subsiteId + "/drives", 
+            "").then(function(result) {
+
+                var templatesId;
+
+                for(var i in result.value) {
+                    if (result.value[i].name === "Templates") {
+                        templatesId = result.value[i].id;
+                    }
+                }
+
+                MSGraphHelper.getGraphData(graphToken, "/sites/" + subsiteId + "/drives/" + templatesId + "/root/children", 
+                "").then(function(result) {
+
+                    var templates = [];
+
+                    for(var i in result.value) {
+                        templates[i] = { 
+                            id: result.value[i].id,
+                            name: result.value[i].name
+                        }
+                    }
+
+                    ServerStorage.persist(jwt, "/sites/" + siteId + "/drives/" + templatesId + "/items/")
+                    return res.send(templates)
+
+                }).catch(function(error) {
+                    console.log(error);
+                });
+
+            }).catch(function(error) {
+                console.log(error);
+            });
+
+        }).catch(function(error) {
+            console.log(error);
+        });    
+
+    }).catch(function(error) {
+        console.log(error);
+    });
+
+})); 
+
+app.get('/get/locations', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
     
     //Get template
-    await MSGraphHelper.getGraphData(graphToken, process.env.sharepoint_templates + req.headers.path, 
+    await MSGraphHelper.getGraphData(graphToken, '/sites/root', 
     "").then(function(result) {
-
+        console.log(result);
     }).catch(function(error) {
         console.log(error);
     });

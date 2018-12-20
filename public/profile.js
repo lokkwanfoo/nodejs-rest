@@ -5,12 +5,19 @@ Office.initialize = function (reason) {
     // Add any initialization logic to this function.
         getData("/api/profiles", accessToken);
 
-        $("#getGraphAccessTokenButton").click(function () {
-            Office.context.ui.messageParent('{"a":2}');
+        $("#close").click(function () {
+            console.log(profile)
+            Office.context.ui.messageParent(JSON.stringify(profile));
+            window.close();
         });
 
         $("#getProfiles").click(function () {
             getData("/api/profiles", accessToken);
+            var anyncFunction = async(function (callback) {
+                console.log(getData("/api/profiles", accessToken))
+                callback();
+            });
+            
         });
 
         $("#profiles").click(function () {
@@ -34,6 +41,12 @@ var image;
 var profiles;
 var profile;
 
+function async(your_function, callback) {
+    setTimeout(function() {
+        your_function();
+        if (callback) {callback();}
+    }, 0);
+}
 
 function getData(relativeUrl, accessToken, path) {
 
@@ -56,13 +69,9 @@ function getData(relativeUrl, accessToken, path) {
                 el.value = profiles[i].id;
                 select.appendChild(el);
             }
-            
-            console.log(profiles)
-
         } 
         else {
             profile = JSON.parse(result);
-            console.log(profile)
             document.getElementById("name").value = profile.name;
             document.getElementById("initials").value = profile.initials;
             document.getElementById("phonenumber").value = profile.phonenumber;
@@ -72,6 +81,7 @@ function getData(relativeUrl, accessToken, path) {
             document.getElementById("location").value = profile.location;
             document.getElementById("profilename").value = $("#profiles option:selected").text();
             getData("/api/profiles", accessToken);
+            return result;
         }
     })
     .fail(function (result) {
@@ -105,7 +115,6 @@ function postData(relativeUrl, accessToken, path) {
         data: profile
     })
     .done(function (result) {
-        
         getData("/api/profiles", accessToken);
         console.log(result)
     })
