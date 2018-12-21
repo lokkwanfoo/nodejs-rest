@@ -242,15 +242,61 @@ app.get('/api/templates', handler(async (req, res) => {
 
 })); 
 
-app.get('/get/locations', handler(async (req, res) => {
+app.get('/api/locations', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
-    
+
     //Get template
-    await MSGraphHelper.getGraphData(graphToken, '/sites/root', 
+    await MSGraphHelper.getGraphData(graphToken, "/sites/root" , 
     "").then(function(result) {
-        console.log(result);
+
+        var siteId = result.id;
+
+        MSGraphHelper.getGraphData(graphToken, "/sites/" + siteId + ":/do365" , 
+        "").then(function(result) {
+            
+            var subsiteId = result.id;
+            
+            MSGraphHelper.getGraphData(graphToken, "/sites/" + subsiteId + "/lists", 
+            "").then(function(result) {
+
+                var listId;
+
+                for(var i in result.value) {
+                    if (result.value[i].name === "Locaties") {
+                        listId = result.value[i].id;
+                    }
+                }
+
+                console.log("/sites/" + subsiteId + "/lists/" + listId + "/items?expand=field")
+                MSGraphHelper.getGraphData(graphToken, "/sites/" + subsiteId + "/lists/" + listId, "?expand=columns(select=Titel,Adres),items(expand=fields)")
+                .then(function(result) {
+                    console.log(result)
+                    var locations = [];
+
+                    // for(var i in result.value) {
+                    //     locations[i] = { 
+                    //         fields: result.value[i].fields
+                    //     }
+                    // }
+
+                    // console.log(locations)
+
+                    return res.send(locations)
+
+                }).catch(function(error) {
+                    console.log(error);
+                });
+
+            }).catch(function(error) {
+                console.log(error);
+            });
+
+        }).catch(function(error) {
+            console.log(error);
+        });    
+
     }).catch(function(error) {
         console.log(error);
     });
