@@ -1,10 +1,3 @@
-// Copyright (c) Microsoft. All rights reserved. Licensed under the MIT license. See full license in the root of the repo.
-
-/*
-    This file provides functions to get ask the Office host to get an access token to the add-in
-	and to pass that token to the server to get Microsoft Graph data.
-*/
-
 Office.initialize = function (reason) {
     // Checks for the DOM to load using the jQuery ready function.
     $(document).ready(function () {
@@ -14,7 +7,29 @@ Office.initialize = function (reason) {
     getOneDriveFiles("/api/templates");
 
         $("#test").click(function () {
-            getOneDriveFiles("/clear");
+            Word.run(function (context) {
+    
+                var wordDocument = context.application.createDocument(template);
+                
+                if (wordDocument) {
+                    
+                    // const name = context.document.contentControls.getByTag("name").getFirst();
+                    // name.insertText(profile.name, "Replace");
+                    wordDocument.open();
+                    contentControls = wordDocument.contentControls;
+                }
+                return context.sync().then(function() {
+                    for (var i in contentControls) {
+                        console.log(contentControls[i])
+                    }
+                });
+            })
+            .catch(function (error) {
+                console.log("Error: " + error);
+                if (error instanceof OfficeExtension.Error) {
+                    console.log("Debug info: " + JSON.stringify(error.debugInfo));
+                }
+            });
         });
 
         $("#gets").click(function () {
@@ -37,59 +52,40 @@ Office.initialize = function (reason) {
             });
         });
 
-
         $("#paste").click(function () {
-
-            Word.run(function (context) {
-                // const logo = context.document.contentControls.getByTag("logo").getFirst();
-
-                // logo.insertInlinePictureFromBase64(image, "Replace");
-
-                // const logo = context.document.contentControls.getByTag("bankaccount").getFirst();
-                // logo.insertInlinePictureFromBase64(profile.image, "Start");
-
-                const subject = context.document.contentControls.getByTag("subject").getFirst();
-                subject.insertText("Rekening", "Replace");
-
-                return context.sync();
-            })
-            .catch(function (error) {
-                console.log("Error: " + error);
-                if (error instanceof OfficeExtension.Error) {
-                    console.log("Debug info: " + JSON.stringify(error.debugInfo));
-                }
-            });
-
-            
+            generateTemplateNewFile(profile, template);    
         });
 
         $("#clear").click(function () {
-            Word.run(function (context) {
-
-                context.document.body.clear();
-
-                return context.sync();
-            })
-            .catch(function (error) {
-                console.log("Error: " + error);
-                if (error instanceof OfficeExtension.Error) {
-                    console.log("Debug info: " + JSON.stringify(error.debugInfo));
-                }
-            });
+            clearContentControls();
         });
+    })
+};
 
-    });
-}
     var templates = [];
+    var template;
     var image;
     var profile;
     var timesGetOneDriveFilesHasRun = 0;
     var triedWithoutForceConsent = false;
     var timesMSGraphErrorReceived = false;
 
+    var profile = {
+        "name":  "Lok Kwan Foo",
+        "initials": "t.t.",
+        "phonenumber": "0201234567",
+        "faxnumber": "",
+        "mobilenumber": "0687654321",
+        "emailaddress": "lokkwanfoo@hotmail.com",
+        "roleDutch": "Advocaat",
+        "roleEnglish": "Attorney",
+        "roleGerman": "Rechtsanwalt"
+    }
+
     function processMessage(arg) {
         profile = JSON.parse(arg.message)
-        getTemplateWithoutAuth("/api/template", "01KPZU6TPBTUP5KYM5XNF3VTZIVUKQKDXY");
+        console.log(profile)
+        // getTemplateWithoutAuth("/api/template", "01KPZU6TPBTUP5KYM5XNF3VTZIVUKQKDXY");
     }
 
     function getBase64(file) {
@@ -136,39 +132,70 @@ Office.initialize = function (reason) {
         postDataWithoutAuthChallenge(apiURLsegment, nameDocument);
     }  
 
-    function generateTemplate(profile, template) {
+    function clearContentControls() {
 
         Word.run(function (context) {
 
-            // const name = context.document.contentControls.getByTag("name").getFirst();
-            // name.insertText(profile.name, "Replace");
+            var contentControls = context.document.contentControls;
+
+            contentControls.load();
+
+            return context.sync().then(function () {
+
+                if (contentControls.items.length === 0) {
+                    console.log("There isn't a content control in this document.");
+                    context.document.body.clear();
+                } else {
+                    for (var i in contentControls.items) {
+                    // Queue a command to clear the contents of the first content control.
+                        contentControls.items[i].delete(false);
+                    }
+                    
+                    context.document.body.clear();
+                    // Synchronize the document state by executing the queued commands, 
+                    // and return a promise to indicate task completion.
+                    return context.sync().then(function () {
+                        console.log('Content control cleared of contents.');
+                    });      
+                }
+        
+            });  
+        })
+        .catch(function (error) {
+            console.log("Error: " + error);
+            if (error instanceof OfficeExtension.Error) {
+                console.log("Debug info: " + JSON.stringify(error.debugInfo));
+            }
+        });
+
+    }
+
+    function generateTemplateNewFile(profile, template) {
+
+        Word.run(function (context) {
 
             var wordDocument = context.application.createDocument(template);
 
-            var contentControls = context.document.contentControls;
-
-    // Queue a command to load the content controls collection.
-    console.log(contentControls.load('name'))
-
-
             if (wordDocument) {
-                
-                // const name = context.document.contentControls.getByTag("name").getFirst();
-                // name.insertText(profile.name, "Replace");
-                wordDocument.open();
+
+                console.log(wordDocument.contentControls.getByTag("name").getFirst());
+                // wordDocument.open();
                 
             }
 
             return context.sync().then(function() {
-                if (wordDocument.contentControls.items.length !== 0) {
-                    for (var i = 0; i < wordDocument.contentControls.items.length; i++) {
-                        console.log(wordDocument.contentControls.items[i].id);
-                        console.log(wordDocument.contentControls.items[i].text);
-                        console.log(wordDocument.contentControls.items[i].tag);
-                    }
-                } else {
-                    console.log('No content controls in this document.');
-                }
+                
+
+                // if (wordDocument.contentControls.items.length !== 0) {
+                //     for (var i = 0; i < wordDocument.contentControls.items.length; i++) {
+                //         console.log(wordDocument.contentControls.items[i].name);
+                //         console.log(wordDocument.contentControls.items[i].text);
+                //         console.log(wordDocument.contentControls.items[i].tag);
+                //     }
+                // } else {
+                //     console.log('No content controls in this document.');
+                // }
+
             });
         })
         .catch(function (error) {
@@ -180,18 +207,42 @@ Office.initialize = function (reason) {
 
     }
 
-    function test(test, a) {
+    function generateTemplate(profile, template) {
+
         Word.run(function (context) {
 
-            var wordDocument = context.application.createDocument(a);
+            context.document.body.insertFileFromBase64(template, "Start")
 
-            if (wordDocument) {
-                wordDocument.open();
-             }
+            // const name = context.document.contentControls.getByTag("name").getFirst();
+            // name.insertText(profile.name, "Replace");
 
-            // context.document.body.insertFileFromBase64(a, "Start");
+            // var wordDocument = context.application.createDocument(template);
+
+            // var contentControls = context.document.contentControls;
+
+            // // Queue a command to load the content controls collection.
+            // console.log(contentControls.load('name'))
+
+
+            // if (wordDocument) {
+                
+            //     wordDocument.open();
+                
+            // }
 
             return context.sync();
+
+            // return context.sync().then(function() {
+            //     if (wordDocument.contentControls.items.length !== 0) {
+            //         for (var i = 0; i < wordDocument.contentControls.items.length; i++) {
+            //             console.log(wordDocument.contentControls.items[i].id);
+            //             console.log(wordDocument.contentControls.items[i].text);
+            //             console.log(wordDocument.contentControls.items[i].tag);
+            //         }
+            //     } else {
+            //         console.log('No content controls in this document.');
+            //     }
+            // });
         })
         .catch(function (error) {
             console.log("Error: " + error);
@@ -199,6 +250,7 @@ Office.initialize = function (reason) {
                 console.log("Debug info: " + JSON.stringify(error.debugInfo));
             }
         });
+
     }
 
     // Called in the first attempt to use the on-behalf-of flow. The assumption
@@ -245,7 +297,6 @@ Office.initialize = function (reason) {
                 }
                 else {
                     // test(result.error.message)
-                    console.log(result)
                     handleClientSideErrors(result);
                 }
             });
@@ -286,7 +337,6 @@ Office.initialize = function (reason) {
         .done(function (result) {
             if (Array.isArray(result)){ 
                 templates = result;
-                console.log(result)
             } 
             // If the result contains 'capolids', then it is the Claims string,
             // not the data.
@@ -299,7 +349,6 @@ Office.initialize = function (reason) {
             // }
             else {
                 console.log(result)
-                test("", result);
                 templates = result;
             }
         })
@@ -364,16 +413,6 @@ Office.initialize = function (reason) {
                     document.getElementById("getGraphAccessTokenButton").disabled = true;
                 }
             });
-    }
-
-    // Displays the data, assumed to be an array.
-    function showResult(data) {
-        for (var i = 0; i < data.length; i++) {
-            $('#file-list').append('<li class="ms-ListItem">' +
-            '<span class="ms-ListItem-secondaryText">' +
-            '<span class="ms-fontColor-themePrimary">' + data[i] + '</span>' +
-            '</span></li>');
-        }
     }
 
     function handleClientSideErrors(result) {
@@ -508,3 +547,4 @@ Office.initialize = function (reason) {
     function logError(result) {
         console.log(result);
     }
+

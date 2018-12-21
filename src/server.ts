@@ -182,10 +182,11 @@ app.get('/api/template', handler(async (req, res) => {
 })); 
 
 app.get('/api/templates', handler(async (req, res) => {
+
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
-    
+
     //Get templates
     await MSGraphHelper.getGraphData(graphToken, "/sites/root" , 
     "").then(function(result) {
