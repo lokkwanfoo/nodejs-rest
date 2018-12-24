@@ -15,11 +15,10 @@ Office.initialize = function (reason) {
         });
 
         $("#get").click(function () {
-            clearContentControls();
             getTemplateWithoutAuth("/api/template", "01KPZU6TPBTUP5KYM5XNF3VTZIVUKQKDXY")
 
         });
-
+// 
         $("#dialog").click(function () {
             Office.context.ui.displayDialogAsync('https://localhost:3000/profile.html', {height: 50, width: 50}, function(asyncResult) {
                 dialog = asyncResult.value;
@@ -56,27 +55,65 @@ Office.initialize = function (reason) {
     var template;
     var image;
     var profile;
+
     var timesGetOneDriveFilesHasRun = 0;
     var triedWithoutForceConsent = false;
     var timesMSGraphErrorReceived = false;
 
     var profile = {
-        "name":  "Lok Kwan Foo",
-        "initials": "t.t.",
-        "phonenumber": "0201234567",
+        "emailaddress": "",
         "faxnumber": "",
-        "mobilenumber": "0687654321",
-        "emailaddress": "lokkwanfoo@hotmail.com",
-        "roleDutch": "Advocaat",
-        "roleEnglish": "Attorney",
-        "roleGerman": "Rechtsanwalt"
+        "initials": "",
+        "mobilenumber": "",
+        "name": "",
+        "phonenumber": "",
+        "roleDutch": "",
+        "roleEnglish": "",
+        "roleGerman": ""
+    }
+
+    letter = {
+        "nameaddress": "",
+        "yourReference": "",
+        "ourReference": "",
+        "subject": "",
+        "name": ""
     }
 
     function processMessage(arg) {
-        profile = JSON.parse(arg.message)
-        console.log(profile)
+        if (isEquivalent(letter, JSON.parse(arg.message))) {
+            letter = JSON.parse(arg.message)
+            // clearContentControls();
+            generateTemplate(letter, template);
+        }
+        if (isEquivalent(profile, JSON.parse(arg.message))) {
+            profile = JSON.parse(arg.message)
+        }
         // getTemplateWithoutAuth("/api/template", "01KPZU6TPBTUP5KYM5XNF3VTZIVUKQKDXY");
     }
+
+    function isEquivalent(a, b) {
+        // Create arrays of property names
+        var aProps = Object.getOwnPropertyNames(a);
+        var bProps = Object.getOwnPropertyNames(b);
+    
+        // If number of properties is different,
+        // objects are not equivalent
+        if (aProps.length != bProps.length) {
+            return false;
+        }
+
+        for (i in a) {
+            if (!b.hasOwnProperty(i)) {
+                return false;
+            }
+        }
+    
+        // If we made it this far, objects
+        // are considered equivalent
+        return true;
+    }
+    
 
     function getBase64(file) {
         return new Promise((resolve, reject) => {
@@ -188,15 +225,26 @@ Office.initialize = function (reason) {
 
     }
 
-    function generateTemplate(profile, template) {
+    function generateTemplate(letter, template) {
 
+        console.log(letter)
         Word.run(function (context) {
+            // var wordDocument = context.document.body.insertFileFromBase64(template, "Start")
+            console.log(context.document.body.ContentControlCollection)
+            var tempNameSpace = {};
+                for (var i in letter) {
+                    if (letter[i] ) {
+                        tempNameSpace[i] = context.document.contentControls.getByTag(i).getFirstOrNullObject();
+                        tempNameSpace[i].insertText(letter[i], "Replace");
+                    }
+                }
 
-            context.document.body.insertFileFromBase64(template, "Start")
 
-            // const name = context.document.contentControls.getByTag("name").getFirst();
-            // name.insertText("asd", "Replace");
+            // if (wordDocument) {
 
+                
+            // }
+            
             return context.sync();
 
         })
@@ -268,7 +316,6 @@ Office.initialize = function (reason) {
             cache: false
         })
         .done(function (result) {
-            
             generateTemplate(profile, result);
         })
         .fail(function (result) {
