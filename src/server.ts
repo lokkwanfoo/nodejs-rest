@@ -281,13 +281,13 @@ app.get('/api/locations', handler(async (req, res) => {
                     console.log(result)
                     var locations = [];
 
-                    // for(var i in result.value) {
-                    //     locations[i] = { 
-                    //         fields: result.value[i].fields
-                    //     }
-                    // }
+                    for(var i in result.value) {
+                        locations[i] = { 
+                            fields: result.value[i].fields
+                        }
+                    }
 
-                    // console.log(locations)
+                    console.log(locations)
 
                     return res.send(locations)
 
