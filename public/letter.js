@@ -10,8 +10,8 @@ Office.initialize = function (reason) {
             window.close();
         });
 
-        $("#saveLetter").click(function () {
-            postData();
+        $("#cancel").click(function () {
+            window.close();
         });
 
     });
@@ -27,7 +27,9 @@ function postData() {
         "yourReference": document.getElementById("yourReference").value,
         "ourReference": document.getElementById("ourReference").value,
         "subject": document.getElementById("subject").value,
-        "name": document.getElementById("name").value
+        "header": document.getElementById("header").value,
+        "closer": document.getElementById("closer").value,
+        "signer": document.getElementById("signer").value
     }
     
 }

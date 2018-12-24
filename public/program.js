@@ -4,7 +4,8 @@ Office.initialize = function (reason) {
     // After the DOM is loaded, app-specific code can run.
     // Add any initialization logic to this function.
 
-    // getOneDriveFiles("/api/templates");
+    getOneDriveFiles("/api/templates");
+    // getOneDriveFiles("/api/profiles");
 
         $("#test").click(function () {
             getOneDriveFiles("/api/locations")
@@ -15,10 +16,10 @@ Office.initialize = function (reason) {
         });
 
         $("#get").click(function () {
-            getTemplateWithoutAuth("/api/template", "01KPZU6TPBTUP5KYM5XNF3VTZIVUKQKDXY")
-
+            clearContentControls();
+            getTemplateWithoutAuth("api/template", templates[0].url + "/" + templates[0].name);
         });
-// 
+
         $("#dialog").click(function () {
             Office.context.ui.displayDialogAsync('https://localhost:3000/profile.html', {height: 50, width: 50}, function(asyncResult) {
                 dialog = asyncResult.value;
@@ -31,7 +32,7 @@ Office.initialize = function (reason) {
         });
 
         $("#letter").click(function () {
-            Office.context.ui.displayDialogAsync('https://localhost:3000/letter.html', {height: 50, width: 50}, function(asyncResult) {
+            Office.context.ui.displayDialogAsync('https://localhost:3000/letter.html', {height: 75, width: 75}, function(asyncResult) {
                 dialog = asyncResult.value;
                 dialog.addEventHandler(Office.EventType.DialogMessageReceived, processMessage);
                 Office.context.auth.getAccessTokenAsync({forceConsent: false},
@@ -53,14 +54,15 @@ Office.initialize = function (reason) {
 
     var templates = [];
     var template;
-    var image;
     var profile;
+    var profiles;
+    var image;
 
     var timesGetOneDriveFilesHasRun = 0;
     var triedWithoutForceConsent = false;
     var timesMSGraphErrorReceived = false;
 
-    var profile = {
+    var profileStructure = {
         "emailaddress": "",
         "faxnumber": "",
         "initials": "",
@@ -72,24 +74,26 @@ Office.initialize = function (reason) {
         "roleGerman": ""
     }
 
-    letter = {
+    var letterStructure = {
         "nameaddress": "",
         "yourReference": "",
         "ourReference": "",
         "subject": "",
-        "name": ""
+        "header": "",
+        "closer": "",
+        "signer": ""
     }
 
     function processMessage(arg) {
-        if (isEquivalent(letter, JSON.parse(arg.message))) {
+        if (isEquivalent(letterStructure, JSON.parse(arg.message))) {
             letter = JSON.parse(arg.message)
-            // clearContentControls();
-            generateTemplate(letter, template);
+            clearContentControls();
+            getTemplateWithoutAuth("api/template", templates[0].url + "/" + templates[0].name, profile);
+
         }
-        if (isEquivalent(profile, JSON.parse(arg.message))) {
+        if (isEquivalent(profileStructure, JSON.parse(arg.message))) {
             profile = JSON.parse(arg.message)
         }
-        // getTemplateWithoutAuth("/api/template", "01KPZU6TPBTUP5KYM5XNF3VTZIVUKQKDXY");
     }
 
     function isEquivalent(a, b) {
@@ -114,7 +118,6 @@ Office.initialize = function (reason) {
         return true;
     }
     
-
     function getBase64(file) {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -225,27 +228,27 @@ Office.initialize = function (reason) {
 
     }
 
-    function generateTemplate(letter, template) {
+    function generateTemplate(letter, template, profile) {
+        console.log(profile)
 
-        console.log(letter)
         Word.run(function (context) {
-            // var wordDocument = context.document.body.insertFileFromBase64(template, "Start")
-            console.log(context.document.body.ContentControlCollection)
-            var tempNameSpace = {};
+            context.document.body.insertFileFromBase64(template, "Start")
+        
+            return context.sync().then(function() {
+                var tempNameSpace = {};
                 for (var i in letter) {
                     if (letter[i] ) {
                         tempNameSpace[i] = context.document.contentControls.getByTag(i).getFirstOrNullObject();
                         tempNameSpace[i].insertText(letter[i], "Replace");
                     }
                 }
-
-
-            // if (wordDocument) {
-
-                
-            // }
-            
-            return context.sync();
+                for (var i in profile) {
+                    if (profile[i] ) {
+                        tempNameSpace[i] = context.document.contentControls.getByTag(i).getFirstOrNullObject();
+                        tempNameSpace[i].insertText(profile[i], "Replace");
+                    }
+                }
+            });
 
         })
         .catch(function (error) {
@@ -316,7 +319,8 @@ Office.initialize = function (reason) {
             cache: false
         })
         .done(function (result) {
-            generateTemplate(profile, result);
+            template = result;
+            generateTemplate(letter, template, profile);
         })
         .fail(function (result) {
             handleServerSideErrors(result);
@@ -337,9 +341,12 @@ Office.initialize = function (reason) {
             cache: false
         })
         .done(function (result) {
-            if (Array.isArray(result)){ 
+            if (relativeUrl == "/api/templates"){ 
                 templates = result;
             } 
+            else if (relativeUrl == "/api/profiles") {
+                profiles = result;
+            }
             // If the result contains 'capolids', then it is the Claims string,
             // not the data.
             else if (result[0].indexOf('capolids') !== -1) {
@@ -350,8 +357,7 @@ Office.initialize = function (reason) {
             //     test("", result);
             // }
             else {
-                console.log(result)
-                templates = result;
+                template = result;
             }
         })
         .fail(function (result) {
@@ -387,7 +393,6 @@ Office.initialize = function (reason) {
             data: profile
         })
         .done(function (result) {
-            console.log(result)
             // test("success", result);
         })
         .fail(function (result) {

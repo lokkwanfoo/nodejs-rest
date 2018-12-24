@@ -155,10 +155,9 @@ app.get('/api/template', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
-
-    var templateUrl = ServerStorage.retrieve(jwt);
+    
     //Get template
-    await MSGraphHelper.getGraphData(graphToken, "" + templateUrl + req.headers.path, 
+    await MSGraphHelper.getGraphData(graphToken, "" + req.headers.path, 
     "").then(function(result) {
         var base64 = '';
         https.get(result['@microsoft.graph.downloadUrl'], (response) => {
@@ -217,11 +216,11 @@ app.get('/api/templates', handler(async (req, res) => {
                     for(var i in result.value) {
                         templates[i] = { 
                             id: result.value[i].id,
-                            name: result.value[i].name
+                            name: result.value[i].name,
+                            url: "/sites/" + subsiteId + result.value[i].parentReference.path
                         }
                     }
 
-                    ServerStorage.persist(jwt, "/sites/" + siteId + "/drives/" + templatesId + "/items/")
                     return res.send(templates)
 
                 }).catch(function(error) {
@@ -243,9 +242,13 @@ app.get('/api/templates', handler(async (req, res) => {
 })); 
 
 app.get('/api/locations', handler(async (req, res) => {
+
+    console.log(ServerStorage.retrieve("ResourceToken"));
+    ServerStorage.remove(ServerStorage.retrieve("ResourceToken"))
+
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Sites.ReadWrite.All']);
 
     //Get template
     await MSGraphHelper.getGraphData(graphToken, "/sites/root" , 
@@ -264,13 +267,16 @@ app.get('/api/locations', handler(async (req, res) => {
                 var listId;
 
                 for(var i in result.value) {
+
                     if (result.value[i].name === "Locaties") {
+                        console.log(result.value)
                         listId = result.value[i].id;
                     }
                 }
 
-                console.log("/sites/" + subsiteId + "/lists/" + listId + "/items?expand=field")
-                MSGraphHelper.getGraphData(graphToken, "/sites/" + subsiteId + "/lists/" + listId, "?expand=columns(select=Titel,Adres),items(expand=fields)")
+                console.log("/sites/" + subsiteId + "/lists/" + listId + "/items" + "?expand=fields")
+                var url = "/sites/" + subsiteId + "/lists/" + listId + "/items" + "?expand=fields"
+                MSGraphHelper.getGraphData(graphToken, url, "")
                 .then(function(result) {
                     console.log(result)
                     var locations = [];

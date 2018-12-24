@@ -137,6 +137,7 @@
       <Resource>api://localhost:3000/f998a180-c0a8-485c-a255-79f92eca235b</Resource>
       <Scopes>
         <Scope>Files.ReadWrite.all</Scope>
+        <Scope>Sites.ReadWrite.All</Scope>
 	      <Scope>profile</Scope>
       </Scopes>
     </WebApplicationInfo>
