@@ -314,7 +314,7 @@ app.get('/delete/profile', handler(async (req, res) => {
 
     MSGraphHelper.postGraphData(graphToken, '/me/drive/items/' + req.headers.path, "", 'DELETE').then(function(result){
         console.log("Success")
-        return res.send("Success");
+        res.send("Success");
     }).catch(function(error){
         console.log("error")
         console.log(error);
@@ -341,6 +341,29 @@ app.post('/api/profile', handler(async (req, res) => {
             }
             //and generate it
             MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children', JSON.stringify(bodyMessage), 'POST').then(function(result){
+
+                //retrieve profile.json str
+                var profile = req.body;
+                //
+                const bodyMessage = { 
+                    name: req.headers.profilename + '.json',
+                    file: {},
+                    '@microsoft.graph.conflictBehavior': 'replace' 
+                }
+                //generate profile file
+                MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children/Persoonsprofielen/children', JSON.stringify(bodyMessage), 'POST').then(function(result){
+                    //and put content inside the file
+                    MSGraphHelper.postGraphData(graphToken, "/me/drive/root:/Persoonsprofielen/" + bodyMessage.name + ":/content", JSON.stringify(profile), 'PUT').then(function(result) {
+                    return res.send("Success")
+                    }).catch(function(error){
+                        console.log(error);
+                    })
+
+                }).catch(function(error){
+                    console.log(error);
+                    return res.send(error);
+                })
+                
             }).catch(function(error){
                 console.log(error);
                 return res.send(error);
@@ -382,31 +405,41 @@ app.get('/api/profiles', handler(async (req, res) => {
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
     //Define array
     var profiles = [];
+    var ids = [];
     var counter = 0;
     await MSGraphHelper.getGraphData(graphToken, process.env.onedrive_profile, "").then(function(result) {
         //For every object in the result array, put in only the id and name in profiles array
+        console.log(result.value)
+        if (result.code === 404 || result.value.length == 0) {
+            return res.send("No profiles")
+        } else {
             for(var i in result.value) {
-                    https.get(result.value[i]['@microsoft.graph.downloadUrl'], (response) => {
-                        var profile = '';
-                        //Define profile variable
-                        response.on('data', (data) => {
-                            //Add data to profile
-                            profile += data;
-                            profiles.push(JSON.parse(profile));
-                            counter++;
-                            console.log(profiles)
-                        })
-                        response.on('end', (data) => {
-                            //Send the profile back
-                            if (counter == result.value.length) {
-                                return res.send(profiles)
-                            } else {
-                                return true;
-                            }
-                        })
-
+                ids.push(result.value[i].id);
+                console.log(ids)
+                https.get(result.value[i]['@microsoft.graph.downloadUrl'], (response) => {
+                    var profile = '';
+                    var parsed;
+                    //Define profile variable
+                    response.on('data', (data) => {
+                        //Add data to profile
+                        profile += data;                        
                     })
+                    response.on('end', (data) => {
+                        parsed = JSON.parse(profile)
+                        parsed.id = ids[counter];
+                        profiles.push(parsed)
+                        counter++;
+                        //Send the profile back
+                        if (counter == result.value.length) {
+                            return res.send(profiles)
+                        } else {
+                            return true;
+                        }
+                })
+            })
             }
+            return true;
+        }         
         }).catch(function(error) {
             console.log(error);
         });

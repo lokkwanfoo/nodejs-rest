@@ -83,24 +83,35 @@ Office.initialize = function (reason) {
 
     function getToken() {
         return new Promise(function(resolve, reject) {
-            Office.context.auth.getAccessTokenAsync({forceConsent: false},
-                function (result) {
-                    if (result.status === "succeeded") {
-                        localStorage.setItem("accessToken", result.value);
-                    }
-                    else {
-                        reject(result);
-                        console.log(result)
-                        handleClientSideErrors(result);
-                    }
-                });
+            if (!localStorage.accessToken) {
+                    Office.context.auth.getAccessTokenAsync({forceConsent: false},
+                        function (result) {
+                            if (result.status === "succeeded") {
+                                localStorage.setItem("accessToken", result.value);
+                                resolve(result.value)
+                            }
+                            else {
+                                reject(result);
+                                console.log(result)
+                                handleClientSideErrors(result);
+                            }
+                        });
+                
+            }
+            else {
+                resolve(localStorage.accessToken);
+            }
         })
     }
 
     function openDialog(url, height, width) {
         if (url == "profile.html") {
             getOneDriveFiles("/api/profiles").then(function(result) {
-                localStorage.setItem("profiles", JSON.stringify(result));
+                if (result.length != 0) {
+                    localStorage.setItem("profiles", JSON.stringify(result));
+                } else {
+                    localStorage.setItem("profiles", '');
+                }
                 Office.context.ui.displayDialogAsync("https://localhost:3000/" + url, {height: height, width: width, displayInIframe: true, promptBeforeOpen: false}, function(asyncResult) {
                 dialog = asyncResult.value;
                 dialog.addEventHandler(Office.EventType.DialogMessageReceived, processMessage);
@@ -299,22 +310,13 @@ Office.initialize = function (reason) {
     // is that single factor authentication is all that is needed.
     function getDataWithoutAuthChallenge(apiURLsegment, nameDocument) {
         return new Promise(function(resolve, reject) {
-            Office.context.auth.getAccessTokenAsync({forceConsent: false},
-                function (result) {
-                    if (result.status === "succeeded") {
-                        accessToken = result.value;
-                        getDataWithPromise(apiURLsegment, accessToken, nameDocument)
-                        .then(function(result) {
-                                resolve(result)
-                        })
-                    }
-                    else {
-                        // test(result.error.message)
-                        reject(result);
-                        console.log(result)
-                        handleClientSideErrors(result);
-                    }
-                });
+            getToken().then(function(result){
+                getDataWithPromise(apiURLsegment, result, nameDocument)
+                .then(function(result) {
+                    resolve(result)
+                })
+
+            })
         })
         
     }
@@ -379,6 +381,11 @@ Office.initialize = function (reason) {
                 resolve(result)
             })
             .fail(function (result) {
+                if (result.responseJSON.error.code == 401) {
+                    console.log("asd")
+                    localStorage.setItem("accessToken", '');
+                    getToken();
+                }
                 reject(Error(result))
                 handleServerSideErrors(result);
                 console.log(result.responseJSON.error);
