@@ -14,7 +14,6 @@ import * as morgan from 'morgan';
 import { AuthModule } from './auth';
 import { MSGraphHelper} from './msgraph-helper';
 import { UnauthorizedError } from './errors';
-import { ServerStorage } from './server-storage';
 
 require('dotenv').config()
 
@@ -154,7 +153,7 @@ app.get('/api/onedriveitems', handler(async (req, res) => {
 app.get('/api/template', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
     
     //Get template
     await MSGraphHelper.getGraphData(graphToken, "" + req.headers.path, 
@@ -184,7 +183,7 @@ app.get('/api/templates', handler(async (req, res) => {
 
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
 
     //Get templates
     await MSGraphHelper.getGraphData(graphToken, "/sites/root" , 
@@ -243,12 +242,12 @@ app.get('/api/templates', handler(async (req, res) => {
 
 app.get('/api/locations', handler(async (req, res) => {
 
-    console.log(ServerStorage.retrieve("ResourceToken"));
-    ServerStorage.remove(ServerStorage.retrieve("ResourceToken"))
+    // console.log(ServerStorage.retrieve("ResourceToken"));
+    // ServerStorage.remove(ServerStorage.retrieve("ResourceToken"))
 
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Sites.ReadWrite.All']);
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
 
     //Get template
     await MSGraphHelper.getGraphData(graphToken, "/sites/root" , 
@@ -269,21 +268,20 @@ app.get('/api/locations', handler(async (req, res) => {
                 for(var i in result.value) {
 
                     if (result.value[i].name === "Locaties") {
-                        console.log(result.value)
                         listId = result.value[i].id;
                     }
                 }
 
-                console.log("/sites/" + subsiteId + "/lists/" + listId + "/items" + "?expand=fields")
-                var url = "/sites/" + subsiteId + "/lists/" + listId + "/items" + "?expand=fields"
-                MSGraphHelper.getGraphData(graphToken, url, "")
+                // console.log("/sites/" + subsiteId + "/lists/" + listId + "/items" + "?expand=fields")
+                MSGraphHelper.getGraphData(graphToken, "/sites/" + subsiteId + "/lists/" + listId + "/items" + "?expand=fields", "")
                 .then(function(result) {
                     console.log(result)
                     var locations = [];
 
                     for(var i in result.value) {
                         locations[i] = { 
-                            fields: result.value[i].fields
+                            title: result.value[i].fields.Title,
+                            address: result.value[i].fields.nloj
                         }
                     }
 
@@ -312,7 +310,7 @@ app.get('/api/locations', handler(async (req, res) => {
 app.get('/delete/profile', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
 
     MSGraphHelper.postGraphData(graphToken, '/me/drive/items/' + req.headers.path, "", 'DELETE').then(function(result){
         console.log("Success")
@@ -329,7 +327,7 @@ app.post('/api/profile', handler(async (req, res) => {
 
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
 
     //Make a call to Persoonsprofielen folder
     await MSGraphHelper.getGraphData(graphToken, '/me/drive/root:/Persoonsprofielen', "").then(function(result) {
@@ -381,30 +379,44 @@ app.post('/api/profile', handler(async (req, res) => {
 app.get('/api/profiles', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
-
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
     //Define array
     var profiles = [];
-
+    var counter = 0;
     await MSGraphHelper.getGraphData(graphToken, process.env.onedrive_profile, "").then(function(result) {
-            //For every object in the result array, put in only the id and name in profiles array
+        //For every object in the result array, put in only the id and name in profiles array
             for(var i in result.value) {
-                profiles[i] = { 
-                    id: result.value[i].id,
-                    name: result.value[i].name
-                }
+                    https.get(result.value[i]['@microsoft.graph.downloadUrl'], (response) => {
+                        var profile = '';
+                        //Define profile variable
+                        response.on('data', (data) => {
+                            //Add data to profile
+                            profile += data;
+                            profiles.push(JSON.parse(profile));
+                            counter++;
+                            console.log(profiles)
+                        })
+                        response.on('end', (data) => {
+                            //Send the profile back
+                            if (counter == result.value.length) {
+                                return res.send(profiles)
+                            } else {
+                                return true;
+                            }
+                        })
+
+                    })
             }
         }).catch(function(error) {
             console.log(error);
         });
-    res.send(profiles)
 
 }));
 
 app.get('/api/profile', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All']);
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
 
     await MSGraphHelper.getGraphData(graphToken, '/me/drive/items/' + req.headers.path, 
         "").then(function(result) {  

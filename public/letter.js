@@ -11,7 +11,7 @@ Office.initialize = function (reason) {
         });
 
         $("#cancel").click(function () {
-            window.close();
+            dialog.close();
         });
 
     });

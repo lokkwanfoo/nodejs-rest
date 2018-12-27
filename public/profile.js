@@ -3,21 +3,21 @@ Office.initialize = function (reason) {
     $(document).ready(function () {
     // After the DOM is loaded, app-specific code can run.
     // Add any initialization logic to this function.
-        getData("/api/profiles", accessToken);
+        // getData("/api/profiles", accessToken);
+
+        console.log(profiles)
+        for (var i in profiles) {
+            // console.log(profiles[i])
+        }
 
         $("#close").click(function () {
             console.log(profile)
             Office.context.ui.messageParent(JSON.stringify(profile));
-            window.close();
         });
 
         $("#getProfiles").click(function () {
             getData("/api/profiles", accessToken);
-            var anyncFunction = async(function (callback) {
-                console.log(getData("/api/profiles", accessToken))
-                callback();
-            });
-            
+
         });
 
         $("#profiles").click(function () {
@@ -38,15 +38,8 @@ Office.initialize = function (reason) {
 
 var accessToken = localStorage.getItem("accessToken");
 var image;
-var profiles;
+var profiles = JSON.parse(localStorage.getItem("profiles"));
 var profile;
-
-function async(your_function, callback) {
-    setTimeout(function() {
-        your_function();
-        if (callback) {callback();}
-    }, 0);
-}
 
 function getData(relativeUrl, accessToken, path) {
 
