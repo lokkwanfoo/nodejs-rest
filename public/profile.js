@@ -7,8 +7,12 @@ Office.initialize = function (reason) {
 
         if (JSON.parse(localStorage.getItem("profiles").length != 0)) {
             profiles = JSON.parse(localStorage.getItem("profiles"));
-            console.log(profiles)
             fillList(profiles);
+            getData("/api/locations", accessToken).then(function(result) {
+                fillDropdown(result);
+                locations = result;
+                console.log(locations)
+            })
         }
         
         $("#close").click(function () {
@@ -16,40 +20,54 @@ Office.initialize = function (reason) {
             Office.context.ui.messageParent(JSON.stringify(profile));
         });
 
-        $("#getProfiles").click(function () {
-            getData("/api/profiles", accessToken);
-        });
-
         $("#profiles").click(function () {
-            console.log(document.getElementById("profiles").id)
-            console.log(profiles[document.getElementById("profiles").value].id)
-            // fillForm();
-            // getData("/api/profile", accessToken, document.getElementById("profiles").value);
+            fillForm(profiles[document.getElementById("profiles").value]);
         });
 
+        $("#locations").click(function () {
+            console.log(document.getElementById("locations").value)
+            document.getElementById("dropdownMenu").innerHTML = locations[document.getElementById("locations").value].title
+            var span = document.createElement("span");
+            span.className += "caret";
+            var button = document.getElementById("dropdownMenu");
+            button.appendChild(span);
+        });
 
         $("#saveProfile").click(function () {
-            postData("/api/profile", accessToken);
+            addProfile();
+        });
+
+        $("#getLocations").click(function () {
+            getData("/api/locations", accessToken).then(function(result) {
+                console.log(result);
+                fillDropdown(result);
+            })
         });
 
         $("#deleteProfile").click(function () {
-            getData("/delete/profile", accessToken, profiles[document.getElementById("profiles").value].id).then(function() {
-                getData("/api/profiles", accessToken).then(function(result) {
-                    profile = result;
-                    console.log(result)
-                    fillList(result);
-                });
-            });
+            for (var i in profiles) {
+                if (i == document.getElementById("profiles").value) {
+                    profiles.splice(i, 1);
+                    postData("/api/profile", accessToken);
+                }
+            }
+        });
+
+        $("#makeDefault").click(function () {
+            for (var i in profiles) {
+                profiles[i].standard = false;
+                profiles[document.getElementById("profiles").value].standard = true;
+            }
         });
 
     });
 }
-// 
+
 var accessToken = localStorage.getItem("accessToken");
-var image;
-var profiles;
+var profiles = [];
 var profile;
-// 
+var locations;
+
 function fillList(array) {
     $("#profiles").empty();
     var select = document.getElementById("profiles"); 
@@ -57,23 +75,36 @@ function fillList(array) {
         for (var i in array) {
             var el = document.createElement("option");
             el.textContent = array[i].profileName;
-            el.value = array[i].id;
+            el.value = i;
             select.appendChild(el);
         }
     } 
 }
 
+function fillDropdown(array) {
+    $("#locations").empty();
+    var select = document.getElementById("locations"); 
+    if (!!array) {
+        for (var i in array) {
+            var li = document.createElement("li");
+            li.setAttribute("id", "locationList");
+            select.appendChild(li);
+            var list = document.getElementById("locationList")
+            var a = document.createElement("a");
+            a.textContent = array[i].title;
+            a.value = i;
+            list.appendChild(a);
+        }
+    } 
+}
+
 function fillForm(profile) {
-    document.getElementById("name").value = profile.name ? profile.name : '';
-    document.getElementById("initials").value = profile.initials ? profile.initials : '';
-    document.getElementById("phonenumber").value = profile.phonenumber ? profile.phonenumber : '';
-    document.getElementById("faxnumber").value = profile.faxnumber ? profile.faxnumber : '';
-    document.getElementById("mobilenumber").value = profile.mobilenumber ? profile.mobilenumber : '';
-    document.getElementById("emailaddress").value = profile.emailaddress ? profile.emailaddress : '';
-    document.getElementById("roleDutch").value = profile.roleDutch ? profile.roleDutch : '';
-    document.getElementById("roleEnglish").value = profile.roleEnglish ? profile.roleEnglish : '';
-    document.getElementById("roleGerman").value = profile.roleGerman ? profile.roleGerman : '';
-    document.getElementById("profileName").value = profile.profileName ? profile.profileName : '';
+    var profileProps = Object.getOwnPropertyNames(profile);
+    for (var i in profileProps) {
+        if (!!document.getElementById(profileProps[i])) {
+            document.getElementById(profileProps[i]).value = profile[profileProps[i]] ? profile[profileProps[i]] : '';
+        }
+    }
 }
 
 function readForm() {
@@ -95,11 +126,11 @@ function readForm() {
     })
 }
 
-function getData(relativeUrl, accessToken, path) {
+function getData(relativeUrl, accessToken) {
     return new Promise(function(resolve, reject) {
         $.ajax({
             url: relativeUrl,
-            headers: { "Authorization": "Bearer " + accessToken, "Path": path},
+            headers: { "Authorization": "Bearer " + accessToken},
             type: "GET",
             // Turn off caching when debugging to force a fetch of data
             // with each call.
@@ -115,33 +146,47 @@ function getData(relativeUrl, accessToken, path) {
     })  
 }
 
-function postData(relativeUrl, accessToken, path) {
-
+function addProfile() {
+    var exists = false;
     if (!!document.getElementById("profileName").value)  {
-
         readForm().then(function(result) {
-            $.ajax({
-                url: relativeUrl,
-                headers: { "Authorization": "Bearer " + accessToken, "Path": path, "profilename": document.getElementById("profileName").value},
-                type: "POST",
-                // Turn off caching when debugging to force a fetch of data
-                // with each call.
-                cache: false,
-                data: result
-            })
-            .done(function (result) {
-                getData("/api/profiles", accessToken).then(function(result) {
-                    profiles = result;
-                    fillList(result);
-                });
-            })
-            .fail(function (result) {
-                console.log(result.responseJSON.error);
-            });
-    
+            if (profiles.length != 0) {
+                for (var i = 0; i < profiles.length; i++) {
+                    if (profiles[i].profileName === result.profileName) {
+                        profiles[i] = result;
+                        exists = true;
+                    } 
+                    if (i == profiles.length -1 && !exists) {
+                        profiles.push(result);
+                    }
+                }
+                postData("/api/profile", accessToken)
+            } else {
+                profiles.push(result);
+                postData("/api/profile", accessToken)
+            }
         })
-
     }
-    
+}
+
+function postData(relativeUrl, accessToken) {
+    $.ajax({
+        url: relativeUrl,
+        headers: { "Authorization": "Bearer " + accessToken},
+        type: "POST",
+        // Turn off caching when debugging to force a fetch of data
+        // with each call.
+        cache: false,
+        data: {value: profiles}
+    })
+    .done(function (result) {
+        getData("/api/profiles", accessToken).then(function(result) {
+            profiles = JSON.parse(result);
+            fillList(profiles);
+        });
+    })
+    .fail(function (result) {
+        console.log(result.responseJSON.error);
+    });
 }
 

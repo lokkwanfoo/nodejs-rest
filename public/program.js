@@ -105,19 +105,17 @@ Office.initialize = function (reason) {
     }
 
     function openDialog(url, height, width) {
-        if (url == "profile.html") {
-            getOneDriveFiles("/api/profiles").then(function(result) {
-                if (result.length != 0) {
-                    localStorage.setItem("profiles", JSON.stringify(result));
-                } else {
-                    localStorage.setItem("profiles", '');
-                }
-                Office.context.ui.displayDialogAsync("https://localhost:3000/" + url, {height: height, width: width, displayInIframe: true, promptBeforeOpen: false}, function(asyncResult) {
+        getOneDriveFiles("/api/profiles").then(function(result) {
+            if (JSON.parse(result.length) != 0) {
+                localStorage.setItem("profiles", result);
+            } else {
+                localStorage.setItem("profiles", '');
+            }
+            Office.context.ui.displayDialogAsync("https://localhost:3000/" + url, {height: height, width: width, displayInIframe: true, promptBeforeOpen: false}, function(asyncResult) {
                 dialog = asyncResult.value;
                 dialog.addEventHandler(Office.EventType.DialogMessageReceived, processMessage);
-                });
             });
-        }
+        });
     }
 
     function processMessage(arg) {

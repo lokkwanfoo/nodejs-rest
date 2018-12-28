@@ -275,18 +275,16 @@ app.get('/api/locations', handler(async (req, res) => {
                 // console.log("/sites/" + subsiteId + "/lists/" + listId + "/items" + "?expand=fields")
                 MSGraphHelper.getGraphData(graphToken, "/sites/" + subsiteId + "/lists/" + listId + "/items" + "?expand=fields", "")
                 .then(function(result) {
-                    console.log(result)
                     var locations = [];
 
                     for(var i in result.value) {
+                        console.log(result.value[i].fields)
                         locations[i] = { 
                             title: result.value[i].fields.Title,
                             address: result.value[i].fields.nloj
                         }
                     }
-
-                    console.log(locations)
-
+                    
                     return res.send(locations)
 
                 }).catch(function(error) {
@@ -306,22 +304,6 @@ app.get('/api/locations', handler(async (req, res) => {
     });
 
 })); 
-
-app.get('/delete/profile', handler(async (req, res) => {
-    await auth.initialize();
-    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
-    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
-
-    MSGraphHelper.postGraphData(graphToken, '/me/drive/items/' + req.headers.path, "", 'DELETE').then(function(result){
-        console.log("Success")
-        res.send("Success");
-    }).catch(function(error){
-        console.log("error")
-        console.log(error);
-        return res.send(error);
-    })
-
-}));  
 
 app.post('/api/profile', handler(async (req, res) => {
 
@@ -343,10 +325,10 @@ app.post('/api/profile', handler(async (req, res) => {
             MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children', JSON.stringify(bodyMessage), 'POST').then(function(result){
 
                 //retrieve profile.json str
-                var profile = req.body;
+                var profile = req.body.value;
                 //
                 const bodyMessage = { 
-                    name: req.headers.profilename + '.json',
+                    name: 'Persoonsprofielen.json',
                     file: {},
                     '@microsoft.graph.conflictBehavior': 'replace' 
                 }
@@ -372,10 +354,10 @@ app.post('/api/profile', handler(async (req, res) => {
         //If folder does exist
         else {
             //retrieve profile.json str
-            var profile = req.body;
-            //
+            var profile = req.body.value;
+            // console.log(JSON.stringify(profile))
             const bodyMessage = { 
-                name: req.headers.profilename + '.json',
+                name: 'Persoonsprofielen.json',
                 file: {},
                 '@microsoft.graph.conflictBehavior': 'replace' 
             }
@@ -403,48 +385,74 @@ app.get('/api/profiles', handler(async (req, res) => {
     await auth.initialize();
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
-    //Define array
-    var profiles = [];
-    var ids = [];
-    var counter = 0;
-    await MSGraphHelper.getGraphData(graphToken, process.env.onedrive_profile, "").then(function(result) {
-        //For every object in the result array, put in only the id and name in profiles array
-        console.log(result.value)
-        if (result.code === 404 || result.value.length == 0) {
-            return res.send("No profiles")
-        } else {
-            for(var i in result.value) {
-                ids.push(result.value[i].id);
-                console.log(ids)
-                https.get(result.value[i]['@microsoft.graph.downloadUrl'], (response) => {
-                    var profile = '';
-                    var parsed;
-                    //Define profile variable
-                    response.on('data', (data) => {
-                        //Add data to profile
-                        profile += data;                        
-                    })
-                    response.on('end', (data) => {
-                        parsed = JSON.parse(profile)
-                        parsed.id = ids[counter];
-                        profiles.push(parsed)
-                        counter++;
-                        //Send the profile back
-                        if (counter == result.value.length) {
-                            return res.send(profiles)
-                        } else {
-                            return true;
-                        }
-                })
+
+    await MSGraphHelper.getGraphData(graphToken, "/me/drive/root/children/Persoonsprofielen/children", "").then(function(result) {
+        console.log(result)
+        https.get(result.value[0]['@microsoft.graph.downloadUrl'], (response) => {
+            //Define profile variable
+            var profile = '';
+
+            response.on('data', (data) => {
+                //Add data to profile
+                profile += data;
             })
-            }
-            return true;
-        }         
+            response.on('end', (data) => {
+                //Send the profile back
+                return res.send(profile);
+            })
+
+        })
+
         }).catch(function(error) {
             console.log(error);
         });
-
 }));
+
+// app.get('/api/profiles', handler(async (req, res) => {
+//     await auth.initialize();
+//     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+//     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
+//     //Define array
+//     var profiles = [];
+//     var ids = [];
+//     var counter = 0;
+//     await MSGraphHelper.getGraphData(graphToken, process.env.onedrive_profile, "").then(function(result) {
+//         //For every object in the result array, put in only the id and name in profiles array
+//         console.log(result.value)
+//         if (result.code === 404 || result.value.length == 0) {
+//             return res.send("No profiles")
+//         } else {
+//             for(var i in result.value) {
+//                 ids.push(result.value[i].id);
+//                 console.log(ids)
+//                 https.get(result.value[i]['@microsoft.graph.downloadUrl'], (response) => {
+//                     var profile = '';
+//                     var parsed;
+//                     //Define profile variable
+//                     response.on('data', (data) => {
+//                         //Add data to profile
+//                         profile += data;                        
+//                     })
+//                     response.on('end', (data) => {
+//                         parsed = JSON.parse(profile)
+//                         parsed.id = ids[counter];
+//                         profiles.push(parsed)
+//                         counter++;
+//                         //Send the profile back
+//                         if (counter == result.value.length) {
+//                             return res.send(profiles)
+//                         } else {
+//                             return true;
+//                         }
+//                 })
+//             })
+//             }
+//             return true;
+//         }         
+//         }).catch(function(error) {
+//             console.log(error);
+//         });
+// }));
 
 app.get('/api/profile', handler(async (req, res) => {
     await auth.initialize();

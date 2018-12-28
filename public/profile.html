@@ -58,18 +58,13 @@
                         <input type="" class="form-control" id="emailaddress" placeholder="">
                     </div>
                     <div class="form-group">
-                        <label for="">Locatie: </label>
+                        <!-- <label for="">Locatie: </label> -->
                         <div class="dropdown">
-                            <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                                Dropdown
+                            <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                Locatie
                                 <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-                                <li><a href="#">Action</a></li>
-                                <li><a href="#">Another action</a></li>
-                                <li><a href="#">Something else here</a></li>
-                                <li role="separator" class="divider"></li>
-                                <li><a href="#">Separated link</a></li>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownMenu1" id="locations">
                             </ul>
                         </div>
                     </div>
@@ -101,6 +96,7 @@
     </div>
 
             <p align="center">
+                    <!-- <button id="getLocations" class="popupButton ms-Button ms-Button--primary"><span class="ms-Button-label">Locaties</span></button> -->
                 <button id="saveProfile" class="popupButton ms-Button ms-Button--primary"><span class="ms-Button-label">Toevoegen profiel</span></button>
                 <button id="deleteProfile" class="popupButton ms-Button ms-Button--primary"><span class="ms-Button-label">Verwijderen profiel </span></button>
                 <button id="makeDefault" class="popupButton ms-Button ms-Button--primary"><span class="ms-Button-label">Maak profiel standaard</span></button>
