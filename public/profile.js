@@ -16,21 +16,15 @@ Office.initialize = function (reason) {
         }
         
         $("#close").click(function () {
-            console.log(profile)
-            Office.context.ui.messageParent(JSON.stringify(profile));
+            Office.context.ui.messageParent("");
         });
 
         $("#profiles").click(function () {
             fillForm(profiles[document.getElementById("profiles").value]);
         });
 
-        $("#locations").click(function () {
-            console.log(document.getElementById("locations").value)
-            document.getElementById("dropdownMenu").innerHTML = locations[document.getElementById("locations").value].title
-            var span = document.createElement("span");
-            span.className += "caret";
-            var button = document.getElementById("dropdownMenu");
-            button.appendChild(span);
+        $("#location").click(function () {
+            console.log(document.getElementById("location").value)
         });
 
         $("#saveProfile").click(function () {
@@ -39,7 +33,6 @@ Office.initialize = function (reason) {
 
         $("#getLocations").click(function () {
             getData("/api/locations", accessToken).then(function(result) {
-                console.log(result);
                 fillDropdown(result);
             })
         });
@@ -54,10 +47,7 @@ Office.initialize = function (reason) {
         });
 
         $("#makeDefault").click(function () {
-            for (var i in profiles) {
-                profiles[i].standard = false;
-                profiles[document.getElementById("profiles").value].standard = true;
-            }
+            makeDefault();
         });
 
     });
@@ -82,18 +72,14 @@ function fillList(array) {
 }
 
 function fillDropdown(array) {
-    $("#locations").empty();
-    var select = document.getElementById("locations"); 
+    $("#location").empty();
+    var select = document.getElementById("location"); 
     if (!!array) {
         for (var i in array) {
-            var li = document.createElement("li");
-            li.setAttribute("id", "locationList");
-            select.appendChild(li);
-            var list = document.getElementById("locationList")
-            var a = document.createElement("a");
-            a.textContent = array[i].title;
-            a.value = i;
-            list.appendChild(a);
+            var el = document.createElement("option");
+            el.textContent = array[i].title;
+            el.value = array[i].id;
+            select.appendChild(el);
         }
     } 
 }
@@ -116,34 +102,15 @@ function readForm() {
             "faxnumber": document.getElementById("faxnumber").value ? document.getElementById("faxnumber").value : '',
             "mobilenumber": document.getElementById("mobilenumber").value ? document.getElementById("mobilenumber").value : '',
             "emailaddress": document.getElementById("emailaddress").value ? document.getElementById("emailaddress").value : '',
+            "location": document.getElementById("location").value ? document.getElementById("location").value : '',
             "roleDutch": document.getElementById("roleDutch").value ? document.getElementById("roleDutch").value : '',
             "roleEnglish": document.getElementById("roleEnglish").value ? document.getElementById("roleEnglish").value : '',
             "roleGerman": document.getElementById("roleGerman").value ? document.getElementById("roleGerman").value : '',
-            "standard": false,
+            "default": document.getElementById("default").value ? document.getElementById("default").value : '',
             "profileName": document.getElementById("profileName").value
         }
         resolve(profile);
     })
-}
-
-function getData(relativeUrl, accessToken) {
-    return new Promise(function(resolve, reject) {
-        $.ajax({
-            url: relativeUrl,
-            headers: { "Authorization": "Bearer " + accessToken},
-            type: "GET",
-            // Turn off caching when debugging to force a fetch of data
-            // with each call.
-            cache: false
-        })
-        .done(function (result) {
-            resolve(result);
-        })
-        .fail(function (result) {
-            reject(result)
-            console.log(result.responseJSON.error);
-        });
-    })  
 }
 
 function addProfile() {
@@ -167,6 +134,35 @@ function addProfile() {
             }
         })
     }
+}
+
+function makeDefault() {
+    for (var i in profiles) {
+        profiles[i].default = false;
+    }
+    profiles[document.getElementById("profiles").value].default = true;
+    console.log(profiles)
+    postData("/api/profile", accessToken)
+}
+
+function getData(relativeUrl, accessToken) {
+    return new Promise(function(resolve, reject) {
+        $.ajax({
+            url: relativeUrl,
+            headers: { "Authorization": "Bearer " + accessToken},
+            type: "GET",
+            // Turn off caching when debugging to force a fetch of data
+            // with each call.
+            cache: false
+        })
+        .done(function (result) {
+            resolve(result);
+        })
+        .fail(function (result) {
+            reject(result)
+            console.log(result.responseJSON.error);
+        });
+    })  
 }
 
 function postData(relativeUrl, accessToken) {

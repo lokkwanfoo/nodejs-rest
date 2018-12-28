@@ -59,28 +59,6 @@ Office.initialize = function (reason) {
     var triedWithoutForceConsent = false;
     var timesMSGraphErrorReceived = false;
 
-    var profileStructure = {
-        "emailaddress": "",
-        "faxnumber": "",
-        "initials": "",
-        "mobilenumber": "",
-        "name": "",
-        "phonenumber": "",
-        "roleDutch": "",
-        "roleEnglish": "",
-        "roleGerman": ""
-    }
-
-    var letterStructure = {
-        "nameaddress": "",
-        "yourReference": "",
-        "ourReference": "",
-        "subject": "",
-        "header": "",
-        "closer": "",
-        "signer": ""
-    }
-
     function getToken() {
         return new Promise(function(resolve, reject) {
             if (!localStorage.accessToken) {
@@ -120,42 +98,32 @@ Office.initialize = function (reason) {
 
     function processMessage(arg) {
         dialog.close();
-        if (isEquivalent(letterStructure, JSON.parse(arg.message))) {
+        console.log(arg.message)
+        if (!!JSON.parse(arg.message)) {
             
             letter = JSON.parse(arg.message)
             clearContentControls();
-            getOneDriveFiles("api/template", templates[0].url + "/" + templates[0].name).then(function(result){
-                template = result;
-                console.log(result)
-                generateTemplate(letter, template, profile);
+            getOneDriveFiles("api/template", templates[0].url + "/" + templates[0].name).then(function(templateResult){
+                getOneDriveFiles("/api/profiles").then(function(profilesResult) {
+                    getDefaultProfile(JSON.parse(profilesResult)).then(function(res) {
+                        generateTemplate(letter, templateResult, res);
+                    })
+                })    
             });
 
         }
-        if (isEquivalent(profileStructure, JSON.parse(arg.message))) {
-            profile = JSON.parse(arg.message)
-        }
+
     }
 
-    function isEquivalent(a, b) {
-        // Create arrays of property names
-        var aProps = Object.getOwnPropertyNames(a);
-        var bProps = Object.getOwnPropertyNames(b);
-    
-        // If number of properties is different,
-        // objects are not equivalent
-        if (aProps.length != bProps.length) {
-            return false;
-        }
-
-        for (i in a) {
-            if (!b.hasOwnProperty(i)) {
-                return false;
+    function getDefaultProfile(profiles) {
+        return new Promise(function(resolve, reject) {
+            for (var i in profiles) {
+                if (profiles[i].default == "true") {
+                    resolve(profiles[i]);
+                }
             }
-        }
-    
-        // If we made it this far, objects
-        // are considered equivalent
-        return true;
+        })
+        
     }
     
     function getBase64(file) {
@@ -274,11 +242,12 @@ Office.initialize = function (reason) {
     }
 
     function generateTemplate(letter, template, profile) {
+        console.log(profile)
 
         Word.run(function (context) {
-            context.document.body.insertFileFromBase64(template, "Start")
-        
-            return context.sync().then(function() {
+            var wordDocument = context.document.body.insertFileFromBase64(template, "Start")
+
+            if  (wordDocument) {
                 var tempNameSpace = {};
                 for (var i in letter) {
                     if (letter[i] ) {
@@ -292,6 +261,10 @@ Office.initialize = function (reason) {
                         tempNameSpace[i].insertText(profile[i], "Replace");
                     }
                 }
+            }
+        
+            return context.sync().then(function() {
+                
             });
 
         })

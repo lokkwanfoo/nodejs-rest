@@ -281,7 +281,8 @@ app.get('/api/locations', handler(async (req, res) => {
                         console.log(result.value[i].fields)
                         locations[i] = { 
                             title: result.value[i].fields.Title,
-                            address: result.value[i].fields.nloj
+                            address: result.value[i].fields.nloj,
+                            id: result.value[i].fields.id
                         }
                     }
                     
@@ -311,13 +312,13 @@ app.post('/api/profile', handler(async (req, res) => {
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
 
-    //Make a call to Persoonsprofielen folder
-    await MSGraphHelper.getGraphData(graphToken, '/me/drive/root:/Persoonsprofielen', "").then(function(result) {
+    //Make a call to doOffice folder
+    await MSGraphHelper.getGraphData(graphToken, '/me/drive/root:/doOffice', "").then(function(result) {
         //If folder does not exist, 
         if (result.code == 404) {
             //define the folder structure
             const bodyMessage = { 
-                name: 'Persoonsprofielen',
+                name: 'doOffice',
                 folder: {},
                 '@microsoft.graph.conflictBehavior': 'fail' 
             }
@@ -333,9 +334,9 @@ app.post('/api/profile', handler(async (req, res) => {
                     '@microsoft.graph.conflictBehavior': 'replace' 
                 }
                 //generate profile file
-                MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children/Persoonsprofielen/children', JSON.stringify(bodyMessage), 'POST').then(function(result){
+                MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children/doOffice/children', JSON.stringify(bodyMessage), 'POST').then(function(result){
                     //and put content inside the file
-                    MSGraphHelper.postGraphData(graphToken, "/me/drive/root:/Persoonsprofielen/" + bodyMessage.name + ":/content", JSON.stringify(profile), 'PUT').then(function(result) {
+                    MSGraphHelper.postGraphData(graphToken, "/me/drive/root:/doOffice/" + bodyMessage.name + ":/content", JSON.stringify(profile), 'PUT').then(function(result) {
                     return res.send("Success")
                     }).catch(function(error){
                         console.log(error);
@@ -362,9 +363,9 @@ app.post('/api/profile', handler(async (req, res) => {
                 '@microsoft.graph.conflictBehavior': 'replace' 
             }
             //generate profile file
-            MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children/Persoonsprofielen/children', JSON.stringify(bodyMessage), 'POST').then(function(result){
+            MSGraphHelper.postGraphData(graphToken, '/me/drive/root/children/doOffice/children', JSON.stringify(bodyMessage), 'POST').then(function(result){
                 //and put content inside the file
-                MSGraphHelper.postGraphData(graphToken, "/me/drive/root:/Persoonsprofielen/" + bodyMessage.name + ":/content", JSON.stringify(profile), 'PUT').then(function(result) {
+                MSGraphHelper.postGraphData(graphToken, "/me/drive/root:/doOffice/" + bodyMessage.name + ":/content", JSON.stringify(profile), 'PUT').then(function(result) {
                 return res.send("Success")
                 }).catch(function(error){
                     console.log(error);
@@ -386,23 +387,26 @@ app.get('/api/profiles', handler(async (req, res) => {
     const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
     const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
 
-    await MSGraphHelper.getGraphData(graphToken, "/me/drive/root/children/Persoonsprofielen/children", "").then(function(result) {
-        console.log(result)
-        https.get(result.value[0]['@microsoft.graph.downloadUrl'], (response) => {
-            //Define profile variable
-            var profile = '';
-
-            response.on('data', (data) => {
-                //Add data to profile
-                profile += data;
+    await MSGraphHelper.getGraphData(graphToken, "/me/drive/root:/doOffice/Persoonsprofielen.json", "").then(function(result) {
+        if (result.code == 404) {
+            res.send([])
+        } else {
+            https.get(result['@microsoft.graph.downloadUrl'], (response) => {
+                //Define profile variable
+                var profile = '';
+    
+                response.on('data', (data) => {
+                    //Add data to profile
+                    profile += data;
+                })
+                response.on('end', (data) => {
+                    //Send the profile back
+                    return res.send(profile);
+                })
+    
             })
-            response.on('end', (data) => {
-                //Send the profile back
-                return res.send(profile);
-            })
-
-        })
-
+        }
+        
         }).catch(function(error) {
             console.log(error);
         });
@@ -479,6 +483,32 @@ app.get('/api/profile', handler(async (req, res) => {
             console.log(error);
         });
 
+}));
+
+app.get('/api/languagepack', handler(async (req, res) => {
+    await auth.initialize();
+    const { jwt } = auth.verifyJWT(req, { scp: 'access_as_user' }); 
+    const graphToken = await auth.acquireTokenOnBehalfOf(jwt, ['Files.ReadWrite.All', 'Sites.ReadWrite.All']);
+
+    await MSGraphHelper.getGraphData(graphToken, "/me/drive/root:/doOffice/languagepack.json", "").then(function(result) {
+        https.get(result['@microsoft.graph.downloadUrl'], (response) => {
+            //Define profile variable
+            var temp = '';
+
+            response.on('data', (data) => {
+                //Add data to profile
+                temp += data;
+            })
+            response.on('end', (data) => {
+                //Send the profile back
+                return res.send(temp);
+            })
+
+        })
+
+        }).catch(function(error) {
+            console.log(error);
+        });
 }));
 
 
