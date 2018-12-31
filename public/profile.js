@@ -11,7 +11,6 @@ Office.initialize = function (reason) {
             getData("/api/locations", accessToken).then(function(result) {
                 fillDropdown(result);
                 locations = result;
-                console.log(locations)
             })
         }
         
@@ -141,7 +140,6 @@ function makeDefault() {
         profiles[i].default = false;
     }
     profiles[document.getElementById("profiles").value].default = true;
-    console.log(profiles)
     postData("/api/profile", accessToken)
 }
 
@@ -151,8 +149,6 @@ function getData(relativeUrl, accessToken) {
             url: relativeUrl,
             headers: { "Authorization": "Bearer " + accessToken},
             type: "GET",
-            // Turn off caching when debugging to force a fetch of data
-            // with each call.
             cache: false
         })
         .done(function (result) {
@@ -170,8 +166,6 @@ function postData(relativeUrl, accessToken) {
         url: relativeUrl,
         headers: { "Authorization": "Bearer " + accessToken},
         type: "POST",
-        // Turn off caching when debugging to force a fetch of data
-        // with each call.
         cache: false,
         data: {value: profiles}
     })

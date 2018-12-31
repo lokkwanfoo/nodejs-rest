@@ -4,44 +4,55 @@ Office.initialize = function (reason) {
     // After the DOM is loaded, app-specific code can run.
     // Add any initialization logic to this function.
 
-    getData("/api/languagepack", accessToken).then(function(result) {
-        console.log(JSON.parse(result))
-        languagepack = JSON.parse(result)
-        fillDropdown(languagepack, "language");
-        var languageProps = Object.keys(languagepack[0]);
-        fillOtherDropdown(languagepack[0][languageProps[i]], languageProps)
-    })
+        getData("/api/languagepack", accessToken).then(function(result) {
+            profiles = JSON.parse(localStorage.getItem("profiles"));
+            for (var i in profiles) {
+                if (profiles[i].default == "true") {
+                    profiles = swapElement(profiles, i, 0);
+                    fillDropdown(profiles, "name")
+                }
+            }
+            languagepack = JSON.parse(result)
+            fillDropdown(languagepack, "language");
+            var languageProps = Object.keys(languagepack[0]);
+            fillOtherDropdown(languagepack[0], languageProps);
+        })
 
-        $("#close").click(function () {
-            postData();
-            Office.context.ui.messageParent(JSON.stringify(letter));
-            window.close();
+        $("#save").click(function () {
+            postData().then(function(result){
+                Office.context.ui.messageParent(JSON.stringify(result));
+            });
         });
 
         $("#cancel").click(function () {
-            dialog.close();
+            Office.context.ui.messageParent("");
         });
 
-        $("#language").click(function () {
+        $("#header").change(function () {
+            var e = document.getElementById("header")
+            console.log(document.getElementById("header").options[document.getElementById("header").selectedIndex].text)
+        });
+
+        $("#language").change(function () {
             var languageProps = Object.keys(languagepack[document.getElementById("language").value]);
-            // console.log(languageProps)
-            // console.log(languagepack[document.getElementById("language").value])
-            for (var i in languageProps) {
-                if (languageProps[i] != "language") {
-                    // fillOtherDropdown(languagepack[document.getElementById("language").value], languageProps[i])
-                }
-            }
+            fillOtherDropdown(languagepack[document.getElementById("language").value], languageProps);
         });
 
     });
 }
 
 var accessToken = localStorage.getItem("accessToken");
-var letter;
 var languagepack;
+var profiles;
+
+function swapElement(array, indexA, indexB) {
+    var tmp = array[indexA];
+    array[indexA] = array[indexB];
+    array[indexB] = tmp;
+    return array;
+  }
 
 function fillDropdown(array, value) {
-    console.log(array)
     $("#" + value).empty();
     var select = document.getElementById(value); 
     if (!!array) {
@@ -54,30 +65,19 @@ function fillDropdown(array, value) {
     } 
 }
 
-function fillOtherDropdown(array, props) {
-    // console.log(array)
-    // console.log(props)
-    var select = document.getElementById(props)
-    for (var i in array) {
-        for (var j in array[i]) {
-            var el = document.createElement("option");
-        el.textContent = array[i];
-        el.value = i;
-        select.appendChild(el)
+function fillOtherDropdown(array, props) {    
+    for (var i in props) {
+        var select = document.getElementById(props[i])
+        if (props[i] != "language") {
+            $("#" + props[i]).empty();
+            for (var j in array[props[i]]) {
+                var el = document.createElement("option");
+                el.textContent = array[props[i]][j];
+                el.value = j;
+                select.appendChild(el)
+            }
         }
-        
-    }
-
-    // for (var i in array) {
-    //     $("#" + props[i]).empty();
-    //     var select = document.getElementById(props[i]); 
-    //     if (!!array) {
-    //         var el = document.createElement("option");
-    //         el.textContent = array[i];
-    //         el.value = i;
-    //         select.appendChild(el);
-    //     }     
-    // }   
+    } 
 }
 
 function getData(relativeUrl, accessToken) {
@@ -86,8 +86,6 @@ function getData(relativeUrl, accessToken) {
             url: relativeUrl,
             headers: { "Authorization": "Bearer " + accessToken},
             type: "GET",
-            // Turn off caching when debugging to force a fetch of data
-            // with each call.
             cache: false
         })
         .done(function (result) {
@@ -95,22 +93,28 @@ function getData(relativeUrl, accessToken) {
         })
         .fail(function (result) {
             reject(result)
-            console.log(result.responseJSON.error);
         });
     })  
 }
 
 function postData() {
+    return new Promise(function(resolve, reject) {
+        var letter = {
+            "nameaddress":  document.getElementById("nameaddress").value ? document.getElementById("nameaddress").value : '',
+            "yourReference": document.getElementById("yourReference").value ? document.getElementById("nameaddress").value : '',
+            "yourReference": document.getElementById("yourReference").value ? document.getElementById("nameaddress").value : '',
+            "ourReference": document.getElementById("ourReference").value ? document.getElementById("ourReference").value : '',
+            "subject": document.getElementById("subject").value ? document.getElementById("subject").value : '',
+            "header": document.getElementById("header").options[document.getElementById("header").selectedIndex].text ? document.getElementById("header").options[document.getElementById("header").selectedIndex].text : '',
+            "footer": document.getElementById("footer").options[document.getElementById("footer").selectedIndex].text ? document.getElementById("footer").options[document.getElementById("footer").selectedIndex].text : '',
+            "status": document.getElementById("status").options[document.getElementById("status").selectedIndex].text ? document.getElementById("status").options[document.getElementById("status").selectedIndex].text : '',
+            "sendOption" : document.getElementById("sendOption").options[document.getElementById("sendOption").selectedIndex].text ? document.getElementById("sendOption").options[document.getElementById("sendOption").selectedIndex].text : ''
+        }
+        
+        var array = [letter, profiles[document.getElementById("name").value]];
 
-    letter = {
-        "nameaddress":  document.getElementById("nameaddress").value,
-        "yourReference": document.getElementById("yourReference").value,
-        "ourReference": document.getElementById("ourReference").value,
-        "subject": document.getElementById("subject").value
-        // "header": document.getElementById("header").value,
-        // "closer": document.getElementById("closer").value,
-        // "signer": document.getElementById("signer").value
-    }
+        resolve(array);
+    })
     
 }
 

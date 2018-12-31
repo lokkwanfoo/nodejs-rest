@@ -119,6 +119,10 @@ app.get('/letter.html', handler(async (req, res) => {
     return res.sendfile('letter.html');
 }));
 
+app.get('/FunctionFile.html', handler(async (req, res) => {
+    return res.sendfile('FunctionFile.html');
+}));
+
 app.get('/api/onedriveitems', handler(async (req, res) => {
     // TODO7: Initialize the AuthModule object and validate the access token 
     //        that the client-side received from the Office host.

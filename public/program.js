@@ -11,9 +11,7 @@ Office.initialize = function (reason) {
     getToken();
     
         $("#test").click(function () {
-            getOneDriveFiles("/api/profiles").then(function(result) {
-                console.log(result)
-            })
+            test();
         });
 
         $("#gets").click(function () {
@@ -73,8 +71,7 @@ Office.initialize = function (reason) {
                                 console.log(result)
                                 handleClientSideErrors(result);
                             }
-                        });
-                
+                        });        
             }
             else {
                 resolve(localStorage.accessToken);
@@ -96,34 +93,34 @@ Office.initialize = function (reason) {
         });
     }
 
+    function openProfile() {
+        getToken().then(function(){
+            getOneDriveFiles("/api/profiles").then(function(result) {
+                if (JSON.parse(result.length) != 0) {
+                    localStorage.setItem("profiles", result);
+                } else {
+                    localStorage.setItem("profiles", '');
+                }
+                Office.context.ui.displayDialogAsync("https://localhost:3000/profile.html", {height: 85, width: 50, displayInIframe: true, promptBeforeOpen: false}, function(asyncResult) {
+                    dialog = asyncResult.value;
+                    dialog.addEventHandler(Office.EventType.DialogMessageReceived, processMessage);
+                });
+            });
+        })   
+    }
+
     function processMessage(arg) {
         dialog.close();
-        console.log(arg.message)
-        if (!!JSON.parse(arg.message)) {
-            
-            letter = JSON.parse(arg.message)
+        console.log(JSON.parse(arg.message))
+        if (!!arg.message) {     
+            array = JSON.parse(arg.message)
             clearContentControls();
             getOneDriveFiles("api/template", templates[0].url + "/" + templates[0].name).then(function(templateResult){
-                getOneDriveFiles("/api/profiles").then(function(profilesResult) {
-                    getDefaultProfile(JSON.parse(profilesResult)).then(function(res) {
-                        generateTemplate(letter, templateResult, res);
-                    })
-                })    
+                generateTemplate(array[0], templateResult, array[1]);
             });
 
         }
 
-    }
-
-    function getDefaultProfile(profiles) {
-        return new Promise(function(resolve, reject) {
-            for (var i in profiles) {
-                if (profiles[i].default == "true") {
-                    resolve(profiles[i]);
-                }
-            }
-        })
-        
     }
     
     function getBase64(file) {
@@ -218,12 +215,16 @@ Office.initialize = function (reason) {
         Word.run(function (context) {
     
             var wordDocument = context.application.createDocument(template);
+
+            var contentControls = context.document.contentControls;
+
+            contentControls.load();
             
             if (wordDocument) {
                 
                 // const name = context.document.contentControls.getByTag("name").getFirst();
                 // name.insertText(profile.name, "Replace");
-                wordDocument.open();
+                // wordDocument.open();
                 contentControls = wordDocument.contentControls;
             }
             return context.sync().then(function() {
@@ -304,39 +305,6 @@ Office.initialize = function (reason) {
                     handleClientSideErrors(result);
                 }
             });
-    }
-
-    // Calls the specified URL or route (in the same domain as the add-in)
-    // and includes the specified access token.
-    async function getData(relativeUrl, accessToken, path) {
-
-        $.ajax({
-            url: relativeUrl,
-            headers: { "Authorization": "Bearer " + accessToken, "Path": path},
-            type: "GET",
-            // Turn off caching when debugging to force a fetch of data
-            // with each call.
-            cache: false
-        })
-        .done(function (result) {
-            resolve(result)
-            // if (relativeUrl == "/api/templates"){ 
-            //     templates = result;
-            // } 
-            // else if (relativeUrl == "/api/profiles") {
-            //     profiles = result;
-            // }
-            // else if (relativeUrl == "/api/locations") {
-            //     console.log(result)
-            // }
-            // else {
-            //     template = result;
-            // }
-        })
-        .fail(function (result) {
-            handleServerSideErrors(result);
-            console.log(result.responseJSON.error);
-        });
     }
 
     function getDataWithPromise(relativeUrl, accessToken, path) {
