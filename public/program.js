@@ -293,20 +293,6 @@ Office.initialize = function (reason) {
         
     }
 
-    async function postDataWithoutAuthChallenge(apiURLsegment, nameDocument) {
-        Office.context.auth.getAccessTokenAsync({forceConsent: false},
-            function (result) {
-                if (result.status === "succeeded") {
-                    accessToken = result.value;
-                    postData(apiURLsegment, accessToken, nameDocument);
-                }
-                else {
-                    console.log(result)
-                    handleClientSideErrors(result);
-                }
-            });
-    }
-
     function getDataWithPromise(relativeUrl, accessToken, path) {
         return new Promise(function(resolve, reject) {
 
@@ -332,41 +318,6 @@ Office.initialize = function (reason) {
 
         })
         
-    }
-
-    function postData(relativeUrl, accessToken, path) {
-
-        var profile = {
-            "name": "T. Tester",
-            "initials": "t.t.",
-            "phonenumber":"0201234567",
-            "faxnumber": "",
-            "mobilenumber":"0687654321",
-            "email": "t.tester@vandoorne.nl",
-            "roleDutch": "Advocaat",
-            "roleEnglish": "Attorney",
-            "roleGerman": "Rechtsanwalt",
-            "image": image
-        }
-
-        var profileName = 'Persoonsprofiel';
-
-        $.ajax({
-            url: relativeUrl,
-            headers: { "Authorization": "Bearer " + accessToken, "Path": path, "profileName": profileName},
-            type: "POST",
-            // Turn off caching when debugging to force a fetch of data
-            // with each call.
-            cache: false,
-            data: profile
-        })
-        .done(function (result) {
-            // test("success", result);
-        })
-        .fail(function (result) {
-            handleServerSideErrors(result);
-            console.log(result.responseJSON.error);
-        });
     }
 
     // Called to trigger a second sign-on in which the user will be prompted
